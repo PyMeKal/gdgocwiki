@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="카카오톡 대화 텍스트 파일을 첨부하는 화면" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>대화 올리기 · 대화위키</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">본문 바로가기</a>
+    <header class="site-header">
+      <nav class="nav-inner" aria-label="주 메뉴">
+        <a class="brand" href="./index.html">대화위키</a>
+        <div class="nav-links">
+          <a href="./index.html">홈</a>
+          <a href="./form.html" aria-current="page">대화 올리기</a>
+          <a href="./wiki.html">위키 보기</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main" class="container form-page">
+      <p class="breadcrumb"><a href="./index.html">홈</a> / 대화 올리기</p>
+      <h1>대화 올리기</h1>
+      <p class="intro">함께 나눈 대화를 위키 문서로 정리해보세요.</p>
+
+      <!-- shortcut: 파일 선택만 제공하는 정적 화면이며, 업로드 API 구현 시 전송을 연결합니다. -->
+      <form class="panel" aria-labelledby="form-title">
+        <h2 id="form-title">새 위키 문서</h2>
+        <p class="muted">문서의 제목을 정하고 카카오톡 대화 파일을 선택해주세요.</p>
+        <div class="field">
+          <label for="wiki-title">문서 제목</label>
+          <input id="wiki-title" name="title" type="text" placeholder="예: 2026년 부산 여행" maxlength="100" />
+        </div>
+        <div class="field">
+          <label for="chat-file">카카오톡 대화 파일</label>
+          <div class="upload-area">
+            <p>대화 내용을 담은 텍스트 파일을 첨부해주세요.</p>
+            <input id="chat-file" name="chat" type="file" accept=".txt,text/plain" aria-describedby="file-help" />
+            <p id="file-help" class="muted small">지원 형식: .txt · 파일 선택 후 파일명이 표시됩니다.</p>
+          </div>
+        </div>
+        <p class="notice">현재는 화면 미리보기 단계입니다. 선택한 파일은 전송되거나 저장되지 않으며, 위키 자동 생성 기능은 준비 중입니다.</p>
+        <div class="actions">
+          <button class="button primary" type="submit" disabled>위키 생성하기 (준비 중)</button>
+          <a class="button" href="./wiki.html">예시 위키 보기</a>
+        </div>
+      </form>
+
+      <aside class="help-box" aria-labelledby="help-title">
+        <h2 id="help-title">대화 파일은 어떻게 준비하나요?</h2>
+        <ol>
+          <li>카카오톡에서 정리하고 싶은 단톡방을 열어주세요.</li>
+          <li>채팅방 설정에서 대화 내용 내보내기를 선택해주세요.</li>
+          <li>저장한 텍스트(.txt) 파일을 위에서 선택해주세요.</li>
+        </ol>
+        <p class="muted small">대화에 포함된 개인정보를 확인하고, 참여자들의 동의를 받아 사용해주세요.</p>
+      </aside>
+    </main>
+
+    <footer class="site-footer">대화위키 <span aria-hidden="true">·</span> 함께 나눈 이야기, 함께 남기는 기록</footer>
+  </body>
+</html>
