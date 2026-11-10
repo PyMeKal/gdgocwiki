@@ -13,7 +13,7 @@
 body { margin: 0; }
 a { color: var(--green); text-decoration: none; }
 a:hover { text-decoration: underline; }
-a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid #a57921; outline-offset: 4px; }
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #a57921; outline-offset: 4px; }
 h1, h2, h3, p { margin: 0; }
 h1 { font-size: 32px; line-height: 1.45; letter-spacing: -1px; }
 h2 { font-size: 20px; line-height: 1.5; }
@@ -60,8 +60,9 @@ h3 { font-size: 17px; }
 .panel > .muted { font-size: 14px; margin-top: 8px; }
 .field { margin-top: 26px; }
 .field label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
-input { font: inherit; max-width: 100%; }
-input[type="text"] { width: 100%; border: 1px solid #c8d1ca; border-radius: 3px; padding: 11px 12px; color: inherit; background: white; }
+input, textarea { font: inherit; max-width: 100%; }
+input[type="text"], textarea { width: 100%; border: 1px solid #c8d1ca; border-radius: 3px; padding: 11px 12px; color: inherit; background: white; }
+textarea { display: block; resize: vertical; }
 input::placeholder { color: #778279; }
 .upload-area { border: 1px dashed #aabbad; background: #fafcf9; padding: 24px; }
 .upload-area > p:first-child { margin-bottom: 16px; font-size: 14px; }
@@ -80,6 +81,26 @@ input[type="file"]::file-selector-button { border: 1px solid #bccac0; border-rad
 .wiki-layout { display: grid; grid-template-columns: minmax(0, 1fr) 210px; align-items: start; gap: 24px; padding-top: 28px; }
 .wiki-article { min-width: 0; background: white; border: 1px solid var(--border); padding: 32px; }
 .article-header h1 { margin: 10px 0 6px; }
+.article-title-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.article-title-row .button { flex-shrink: 0; }
+.article-header h1, .wiki-section h2 { overflow-wrap: anywhere; }
+.wiki-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.wiki-section > * + * { margin-top: 18px; }
+.footnote-reference { font-size: 11px; font-weight: 400; line-height: 1; white-space: normal; }
+.footnote-reference > a { padding: 3px; }
+.footnotes { border-top: 1px solid var(--border); margin-top: 36px; padding-top: 20px; font-size: 13px; }
+.footnotes h2 { font-size: 17px; }
+.footnotes ol { list-style: none; padding: 0; }
+.footnotes li { margin-top: 8px; scroll-margin-top: 24px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.footnotes li:target { background: #fff5e9; }
+.editor-section-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.table-editor { min-width: 0; margin: 26px 0 0; padding: 16px; border: 1px solid var(--border); }
+.table-editor-row { display: flex; flex-wrap: wrap; align-items: start; gap: 12px; min-width: 0; margin: 16px 0; padding: 12px; border: 1px solid var(--border); }
+.table-editor .field { margin-top: 12px; }
+.table-editor-row .field { min-width: 0; flex: 1 1 140px; }
+.table-editor-row .button { margin-top: 12px; }
+.editor-save { margin-top: 28px; padding: 24px; background: white; border: 1px solid var(--border); }
+.editor-save .actions { margin-top: 12px; }
 .category { margin-top: 24px; padding: 7px 12px; border: 1px solid var(--border); font-size: 12px; }
 .category span { padding: 0 6px; color: #b0bab3; }
 .toc { display: table; max-width: 100%; margin-top: 24px; padding: 16px 24px; border: 1px solid var(--border); background: #fdfefd; }
