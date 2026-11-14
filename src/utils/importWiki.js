@@ -2,6 +2,17 @@ import { validateWiki } from './wikiSchema.js'
 // import { isSafeUrl, isWikiBlock, reservedSectionIds } from './wikiSchema.js'
 
 const maxBytes = 5 * 1024 * 1024
+const sectionHeading = /^##(?!#)[ \t]*([^\r\n]*)(?:\r\n|\n|\r|$)/gm
+
+// 표시할 때와 같은 경계를 사용하고, 다른 섹션의 공백·줄바꿈은 원문 그대로 보존합니다.
+export function getPageSection(content, sectionId) {
+  const headings = [...content.matchAll(sectionHeading)]
+  const index = headings.findIndex((_, index) => sectionId === `section-${index + 1}`)
+  if (index < 0) throw new Error('편집할 섹션을 찾을 수 없습니다. 문서로 돌아가 다시 선택해주세요.')
+  const start = headings[index].index
+  const end = headings[index + 1]?.index ?? content.length
+  return { start, end, content: content.slice(start, end) }
+}
 
 // 파일 입력도 API 응답과 같은 필드 검사·섹션 변환을 거칩니다.
 export function parseWikiJson(text) {
@@ -167,7 +178,7 @@ export function parseWikiData(raw) {
   const wiki = { title: raw.title, category: raw.category ?? '', description: '', sections: [] }
   let section
   let start = 0
-  for (const match of raw.content.matchAll(/^##(?!#)[ \t]*([^\r\n]*)(?:\r\n|\n|\r|$)/gm)) {
+  for (const match of raw.content.matchAll(sectionHeading)) {
     if (wiki.sections.length === 1000) throw new Error('섹션은 최대 1,000개까지 지원합니다.')
     if (section) section.blocks[0].text = raw.content.slice(start, match.index)
     else wiki.description = raw.content.slice(0, match.index)

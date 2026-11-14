@@ -8,8 +8,9 @@ import WikiHomePage from './Pages/WikiHomePage.jsx'
 import WikiPage from './Pages/WikiPage.jsx'
 import LocalWikiPage from './Pages/LocalWikiPage.jsx'
 import WikiApiError from './components/WikiApiError.jsx'
-import { generationLoader, pageLoader, unlockAction, uploadAction, wikiLoader } from './api/routeHandlers.js'
+import { generationLoader, pageEditAction, pageEditLoader, pageLoader, unlockAction, uploadAction, wikiLoader } from './api/routeHandlers.js'
 import WikiEditPage from './Pages/WikiEditPage.jsx'
+import WikiPageEditPage from './Pages/WikiPageEditPage.jsx'
 import WikiImportPage from './Pages/WikiImportPage.jsx'
 
 export const routes = [{
@@ -23,7 +24,8 @@ export const routes = [{
     { path: '/wiki/:wikiId/import', element: <WikiImportPage /> },
     { path: '/wiki/:wikiId/pages/:pagesId', element: <WikiPage />, loader: pageLoader, action: unlockAction, errorElement: <WikiApiError /> },
     { path: '/wiki/:wikiId/preview', element: <LocalWikiPage /> },
-    { path: '/wiki/:wikiId/pages/:pagesId/edit', element: <WikiEditPage /> },
+    { path: '/wiki/:wikiId/preview/edit', element: <WikiEditPage /> },
+    { path: '/wiki/:wikiId/pages/:pagesId/edit', element: <WikiPageEditPage />, loader: pageEditLoader, action: pageEditAction, errorElement: <WikiApiError /> },
     { path: '*', element: (
       <main id="main" className="container form-page">
         <title>페이지를 찾을 수 없습니다 · 대화위키</title>

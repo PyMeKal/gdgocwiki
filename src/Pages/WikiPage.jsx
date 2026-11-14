@@ -1,10 +1,10 @@
 import { Link, useLoaderData, useParams } from 'react-router'
 import Breadcrumb from '../components/Breadcrumb.jsx'
 import WikiDocument from '../components/WikiDocument.jsx'
-import { wikiPath } from '../utils/paths.js'
+import { wikiPagePath, wikiPath } from '../utils/paths.js'
 
 export default function WikiPage() {
-  const { wikiId } = useParams()
+  const { wikiId, pagesId } = useParams()
   const { wiki, document } = useLoaderData()
   return (
     <>
@@ -12,7 +12,7 @@ export default function WikiPage() {
       <main id="main" className="container wiki-layout">
         <article className="wiki-article">
           <Breadcrumb><Link to={wikiPath(wikiId)}>{wiki.name}</Link> / 위키 문서</Breadcrumb>
-          <WikiDocument wiki={document} />
+          <WikiDocument wiki={document} editPath={`${wikiPagePath(wikiId, pagesId)}/edit`} />
           <div className="article-bottom"><a href="#main">맨 위로 ↑</a></div>
         </article>
         <aside className="wiki-sidebar" aria-label="문서 도구">

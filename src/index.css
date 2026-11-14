@@ -111,6 +111,7 @@ input[type="file"]::file-selector-button { border: 1px solid #bccac0; border-rad
 .toc li { padding-left: 4px; }
 .wiki-section { margin-top: 32px; scroll-margin-top: 24px; }
 .wiki-section-heading { font-size: 23px; border-bottom: 1px solid #cdd7cf; padding-bottom: 7px; margin-bottom: 18px; overflow-wrap: anywhere; }
+.section-edit { margin-left: 12px; vertical-align: middle; font-size: 13px; font-weight: 400; }
 .wiki-section .wiki-section .wiki-section-heading { font-size: 20px; }
 /* 정보 표는 DOM에서 본문 앞에 두고, right 배치일 때만 데스크톱에서 옆으로 띄웁니다. */
 .wiki-infobox { max-width: 100%; margin-top: 24px; border: 1px solid var(--border); background: #fdfefd; overflow-wrap: anywhere; }

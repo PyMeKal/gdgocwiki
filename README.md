@@ -43,6 +43,8 @@ React Router의 `Link`·`NavLink`로 전체 새로고침 없이 이동하며 뒤
 | 위키 홈·문서 목록 | `/wiki/:wikiId` |
 | 위키 문서 | `/wiki/:wikiId/pages/:pagesId` |
 | 문서 편집 | `/wiki/:wikiId/pages/:pagesId/edit` |
+| 섹션 편집 | `/wiki/:wikiId/pages/:pagesId/edit?section=section-1` |
+| 브라우저 문서 편집 | `/wiki/:wikiId/preview/edit` |
 | 문서 제작 대기·완료 | `/wiki/:wikiId/generations/:jobId` |
 | JSON 입력 | `/wiki/:wikiId/import` |
 | 브라우저 문서 미리보기 | `/wiki/:wikiId/preview` |
@@ -51,7 +53,9 @@ React Router의 `Link`·`NavLink`로 전체 새로고침 없이 이동하며 뒤
 위키 홈은 `GET /wikis/:wikiId`와 `GET /wikis/:wikiId/pages`, 문서 화면은 `GET /wikis/:wikiId`와 `GET /wikis/:wikiId/pages/:pagesId`를 호출합니다. 목록의 문서를 누르면 응답의 문서 ID로 이동합니다. 로딩, 빈 목록, 404·네트워크 오류와 재시도를 표시하며 로컬 예시 데이터로 대체하지 않습니다.
 비밀번호가 필요한 위키는 인증 폼을 표시하고 `POST /wikis/:wikiId/unlock` 성공 후 다시 조회합니다. 기본 MSW 예시 위키의 비밀번호는 `1234`입니다.
 문서 응답의 `title`, `category`, `content`를 `WikiDocument` 형식으로 변환합니다. `content`에서 줄 처음의 `##개요`·`## 개요`를 섹션 제목으로 읽고, 다음 `##` 전까지의 내용을 해당 섹션의 본문으로 표시합니다. 목차·섹션 번호·링크는 기존 렌더러가 생성합니다.
-JSON 저장·기존 편집기는 현재 브라우저의 문서 하나를 사용하며 API 문서를 수정하지 않습니다. 해당 결과는 `/wiki/:wikiId/preview`에서 확인하고, 이 미리보기의 **위키 수정** 버튼으로 기존 편집기를 엽니다.
+API 문서 제목 옆 **편집** 버튼은 전체 본문을, 각 섹션 옆 **편집** 버튼은 해당 섹션만 편집합니다. 섹션 제목은 `## 제목` 형식입니다. **편집 완료** 시 `PATCH /wikis/:wikiId/pages/:pageId`에 `{ content, version }`을 전송하고 원래 문서로 돌아갑니다. 저장 실패·버전 충돌 시 입력은 유지됩니다.
+
+JSON 저장·브라우저 문서 편집기는 현재 브라우저의 문서 하나를 사용합니다. 해당 결과는 `/wiki/:wikiId/preview`에서 확인하고, 이 미리보기의 **위키 수정** 버튼으로 브라우저 문서 편집기를 엽니다.
 기존 `?page=...` 주소는 사용하지 않습니다.
 Vite 개발·preview 서버는 위 주소를 직접 열거나 새로고침할 수 있습니다. 배포 서버에서도 `/wiki/...` 등 파일이 없는 화면 경로를 `index.html`로 보내는 SPA fallback 설정이 필요하며, 정적 파일과 실제 API 경로는 그대로 제공해야 합니다. 자산 경로는 루트(`/`) 기준입니다.
 기존 개별 HTML 페이지는 사용하지 않습니다.

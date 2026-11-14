@@ -1,8 +1,8 @@
-import { createPage, generatePages, getGeneration, createWiki, getPage, getPages, getWiki, unlockWiki, uploadChat } from './wikis.js'
+import { createPage, generatePages, getGeneration, createWiki, getPage, getPages, getWiki, unlockWiki, updatePage, uploadChat } from './wikis.js'
 import { readChatFile } from '../utils/readChatFile.js'
 import { redirect } from 'react-router'
-import { wikiPath } from '../utils/paths.js'
-import { parseWikiData } from '../utils/importWiki.js'
+import { wikiPagePath, wikiPath } from '../utils/paths.js'
+import { getPageSection, parseWikiData } from '../utils/importWiki.js'
 
 export async function uploadAction({ request }) {
   const form = await request.formData()
@@ -33,7 +33,43 @@ export async function wikiLoader({ params }) {
 export async function pageLoader({ params }) {
   const [wiki, page] = await Promise.all([getWiki(params.wikiId), getPage(params.wikiId, params.pagesId)])
   const { wiki: document } = parseWikiData(page)
-  return { wiki, document }
+  return { wiki, document, page }
+}
+
+export async function pageEditLoader({ params, request }) {
+  const data = await pageLoader({ params })
+  if (!Number.isInteger(data.page.version) || data.page.version <= 0) throw new Error('문서 버전을 불러오지 못했습니다. 다시 시도해주세요.')
+  const sectionId = new URL(request.url).searchParams.get('section')
+  const editContent = sectionId === null ? data.page.content : getPageSection(data.page.content, sectionId).content
+  return { ...data, editContent }
+}
+
+export async function pageEditAction({ request, params }) {
+  try {
+    const form = await request.formData()
+    if (form.has('password')) {
+      await unlockWiki(params.wikiId, form.get('password'))
+      return null
+    }
+    let content = form.get('content')
+    const version = Number(form.get('version'))
+    if (typeof content !== 'string' || !Number.isInteger(version) || version <= 0) throw new Error('문서 본문과 버전을 확인해주세요.')
+    const page = await getPage(params.wikiId, params.pagesId)
+    if (version !== page.version) throw new Error('다른 사용자가 수정한 문서입니다. 입력한 내용을 복사한 뒤 문서를 다시 불러와주세요.')
+    const sectionId = new URL(request.url).searchParams.get('section')
+    if (sectionId !== null) {
+      const section = getPageSection(page.content, sectionId)
+      const { wiki } = parseWikiData({ ...page, content })
+      if (wiki.description || wiki.sections.length !== 1) throw new Error('선택한 섹션의 ## 제목 하나와 본문만 입력해주세요.')
+      if (section.end < page.content.length && !/[\r\n]$/.test(content)) content += '\n'
+      content = page.content.slice(0, section.start) + content + page.content.slice(section.end)
+    }
+    parseWikiData({ ...page, content })
+    await updatePage(params.wikiId, params.pagesId, { content, version })
+    return redirect(`${wikiPagePath(params.wikiId, params.pagesId)}${sectionId ? `#${encodeURIComponent(sectionId)}` : ''}`)
+  } catch (error) {
+    return { error: error.message }
+  }
 }
 
 export async function unlockAction({ request, params }) {

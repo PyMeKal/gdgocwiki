@@ -3,7 +3,7 @@ import { after, before, beforeEach, test } from 'node:test'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
 import { readFile } from 'node:fs/promises'
-import { generationLoader, uploadAction } from '../src/api/routeHandlers.js'
+import { generationLoader, pageEditAction, pageEditLoader, uploadAction } from '../src/api/routeHandlers.js'
 import * as api from '../src/api/wikis.js'
 import { handlers } from '../src/mocks/handlers.js'
 import { configureDbStorage, db, DEMO_WIKI_ID, resetDb } from '../src/mocks/db.js'
@@ -107,6 +107,77 @@ test('page CRUD persists, hides internal fields and rejects stale versions witho
   assert.equal(await api.deletePage(wiki.id, pageId), undefined)
   await assert.rejects(api.getPage(wiki.id, pageId), errorIs(404, 'PAGE_NOT_FOUND'))
   assert.deepEqual((await api.getPages(wiki.id)).pages, [])
+})
+
+function editRequest(wikiId, pagesId, { content, version = 1, section } = {}) {
+  const body = new FormData()
+  if (content !== undefined) body.set('content', content)
+  body.set('version', version)
+  return {
+    params: { wikiId, pagesId },
+    request: new Request(`http://localhost/wiki/${wikiId}/pages/${pagesId}/edit${section === undefined ? '' : `?section=${section}`}`, { method: 'POST', body }),
+  }
+}
+
+test('page edit loads the API document and PATCHes content with its version before redirecting', async () => {
+  const wiki = await api.createWiki({ name: '편집 테스트' })
+  const page = await api.createPage(wiki.id, { title: '문서', category: 'EVENT', content: '## 개요\n이전 본문' })
+  const args = editRequest(wiki.id, page.id, { content: '소개\n## 개요\n수정 본문\n## 일정\n새 일정' })
+  const loaded = await pageEditLoader(args)
+  assert.equal(loaded.page.version, 1)
+  assert.equal(loaded.editContent, '## 개요\n이전 본문')
+  let sent
+  server.use(http.patch('http://localhost/wikis/:wikiId/pages/:pageId', async ({ request }) => {
+    sent = await request.clone().json()
+  }))
+  const result = await pageEditAction(args)
+  assert.equal(result.status, 302)
+  assert.equal(result.headers.get('Location'), `/wiki/${wiki.id}/pages/${page.id}`)
+  assert.deepEqual(sent, { content: '소개\r\n## 개요\r\n수정 본문\r\n## 일정\r\n새 일정', version: 1 })
+  const saved = await api.getPage(wiki.id, page.id)
+  assert.equal(saved.content, sent.content)
+  assert.equal(saved.version, 2)
+})
+
+test('section edits preserve the introduction and other sections byte for byte, including line endings', async () => {
+  const wiki = await api.createWiki({ name: '부분 편집' })
+  const prefix = '소개\r\n\r\n## 같은 제목\r\n보존 본문\r\n\r\n'
+  const suffix = '## 마지막\r\n보존할 마지막 본문'
+  const page = await api.createPage(wiki.id, { title: '문서', category: 'EVENT', content: `${prefix}##같은 제목\r\n변경 전\r\n${suffix}` })
+  const args = editRequest(wiki.id, page.id, { content: '## 수정 제목\n변경 후[* 주석]', section: 'section-2' })
+  assert.equal((await pageEditLoader(args)).editContent, '##같은 제목\r\n변경 전\r\n')
+  const result = await pageEditAction(args)
+  assert.equal(result.headers.get('Location'), `/wiki/${wiki.id}/pages/${page.id}#section-2`)
+  assert.equal((await api.getPage(wiki.id, page.id)).content, `${prefix}## 수정 제목\r\n변경 후[* 주석]\n${suffix}`)
+  const last = await pageEditAction(editRequest(wiki.id, page.id, { content: '## 끝', section: 'section-3', version: 2 }))
+  assert.equal(last.status, 302)
+  assert.equal((await api.getPage(wiki.id, page.id)).content, `${prefix}## 수정 제목\r\n변경 후[* 주석]\n## 끝`)
+})
+
+test('invalid edits, version conflicts and save failures preserve the stored document', async () => {
+  const wiki = await api.createWiki({ name: '편집 오류' })
+  const page = await api.createPage(wiki.id, { title: '문서', category: 'EVENT', content: '## 개요\n원본' })
+  const original = await api.getPage(wiki.id, page.id)
+  for (const input of [
+    {}, { content: '본문', version: 0 }, { content: '본문', version: 'bad' },
+    { content: '## 제목\n본문', section: 'section-2' }, { content: '', section: '' },
+    { content: '제목 없는 본문', section: 'section-1' },
+    { content: '## 첫 섹션\n## 다른 섹션', section: 'section-1' },
+    { content: '머리말\n## 제목', section: 'section-1' },
+    { content: 'a'.repeat(5 * 1024 * 1024 + 1) },
+    { content: '## 제목\n'.repeat(1001) },
+    { content: '충돌 내용', version: 2 },
+  ]) {
+    assert.ok((await pageEditAction(editRequest(wiki.id, page.id, input))).error)
+    assert.deepEqual(await api.getPage(wiki.id, page.id), original)
+  }
+  await assert.rejects(pageEditLoader(editRequest(wiki.id, page.id, { section: 'section-2' })), /섹션을 찾을 수 없습니다/)
+  server.use(http.patch('http://localhost/wikis/:wikiId/pages/:pageId', () => HttpResponse.json({ message: '저장 실패' }, { status: 500 })))
+  assert.deepEqual(await pageEditAction(editRequest(wiki.id, page.id, { content: '수정한 본문' })), { error: '저장 실패' })
+  assert.deepEqual(await api.getPage(wiki.id, page.id), original)
+  server.use(http.patch('http://localhost/wikis/:wikiId/pages/:pageId', () => HttpResponse.json({ message: '동시 수정 충돌' }, { status: 409 })))
+  assert.deepEqual(await pageEditAction(editRequest(wiki.id, page.id, { content: '수정한 본문' })), { error: '동시 수정 충돌' })
+  assert.deepEqual(await api.getPage(wiki.id, page.id), original)
 })
 
 test('multipart upload accepts Korean TXT files and returns wiki-scoped upload metadata', async () => {

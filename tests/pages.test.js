@@ -60,13 +60,15 @@ test('pages render with shared navigation and valid section links', async (t) =>
       ['/form', '대화 올리기', '새 위키 문서'],
       [wikiPath(), '위키 보기', '문서 목록'],
       [wikiPagePath(), '위키 보기', '2026년 부산 여행'],
-      [`${wikiPagePath()}/edit`, '위키 보기', '문서 정보'],
+      [`${wikiPagePath()}/edit`, '위키 보기', '전체 문서 편집'],
+      [`${wikiPagePath()}/edit?section=section-2`, '위키 보기', '섹션 편집'],
+      [`${wikiPath()}/preview/edit`, '위키 보기', '문서 정보'],
       [`${wikiPath()}/import`, '위키 보기', 'JSON 입력'],
       ['/unknown', null, '페이지를 찾을 수 없습니다.'],
       ['/wiki/team-42/pages/travel-17', '위키 보기', '다른 문서'],
       [`${wikiPath()}/preview`, '위키 보기', '2026년 부산 여행'],
       ['/wiki/missing/pages/missing', '위키 보기', '요청한 위키 또는 문서를 찾을 수 없습니다.'],
-      ['/wiki/team-42/pages/travel-17/edit', '위키 보기', '문서 정보'],
+      ['/wiki/team-42/pages/travel-17/edit', '위키 보기', '전체 문서 편집'],
     ]
 
     for (const [path, activeLabel, heading] of cases) {
@@ -113,10 +115,25 @@ test('pages render with shared navigation and valid section links', async (t) =>
           assert.doesNotMatch(html, /## 개요|## 일정|버전 undefined/)
           assert.ok(requests.includes(`GET /wikis/${db.wikis[0].id}`))
           assert.ok(requests.includes(`GET /wikis/${db.wikis[0].id}/pages/page_001`))
+          assert.ok(html.includes(`href="${wikiPagePath()}/edit"`))
+          assert.ok(html.includes(`href="${wikiPagePath()}/edit?section=section-1"`))
+          assert.ok(html.includes(`href="${wikiPagePath()}/edit?section=section-2"`))
+          assert.match(html, /aria-label="1\. 개요 섹션 편집"/)
         }
 
         if (path === `${wikiPagePath()}/edit`) {
           assert.match(html, /<title>2026년 부산 여행 수정 · 대화위키<\/title>/)
+          assert.match(html, /name="version" value="3"/)
+          assert.match(html, /## 개요/)
+          assert.match(html, /## 일정/)
+          assert.match(html, /type="submit">편집 완료/)
+          assert.doesNotMatch(html, /edit-wiki-title|브라우저에 저장됩니다/)
+        }
+        if (path === `${wikiPagePath()}/edit?section=section-2`) {
+          assert.match(html, /## 일정/)
+          assert.doesNotMatch(html, /## 개요|친구들과 부산에 가기로/)
+        }
+        if (path === `${wikiPath()}/preview/edit`) {
           assert.match(html, /id="edit-wiki-title"[^>]*value="2026년 부산 여행"/)
           assert.match(html, /목차 5 제목/)
           assert.match(html, /표 머리글/)
@@ -130,7 +147,8 @@ test('pages render with shared navigation and valid section links', async (t) =>
           assert.ok(html.includes('href="/wiki/team-42"'))
         }
         if (path === '/wiki/team-42/pages/travel-17/edit') {
-          assert.ok(html.includes('href="/wiki/team-42/preview"'))
+          assert.ok(html.includes('href="/wiki/team-42/pages/travel-17"'))
+          assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt; 다른 본문/)
         }
       })
     }
@@ -173,6 +191,59 @@ test('pages render with shared navigation and valid section links', async (t) =>
         await router.navigate(wikiPagePath(), { formMethod: 'post', formData })
         assert.match(render(), /친구들과 부산에 가기로 계획한 여행이다/)
         assert.doesNotMatch(render(), /위키 비밀번호를 입력/)
+      } finally {
+        router.dispose()
+        db.wikis[0].password = ''
+        cookie = ''
+      }
+    })
+
+    await t.test('edit submission redirects to the updated document and back navigation reloads the editor', async () => {
+      const path = `${wikiPagePath('team-42', 'travel-17')}/edit`
+      const router = createMemoryRouter(routes, { initialEntries: ['/'] })
+      const render = () => renderToStaticMarkup(createElement(RouterProvider, { router }))
+      try {
+        await router.navigate(path)
+        const formData = new FormData()
+        formData.set('content', '소개\n## 개요\n저장 후 본문\n## 일정\n보존할 일정')
+        formData.set('version', '3')
+        await router.navigate(path, { formMethod: 'post', formData })
+        assert.equal(router.state.location.pathname, wikiPagePath('team-42', 'travel-17'))
+        assert.match(render(), /저장 후 본문/)
+        await router.navigate(`${path}?section=section-1`)
+        assert.match(render(), /저장 후 본문/)
+        assert.doesNotMatch(render(), /보존할 일정/)
+        formData.set('content', '## 새 개요\n부분 수정 결과')
+        formData.set('version', '4')
+        await router.navigate(`${path}?section=section-1`, { formMethod: 'post', formData })
+        assert.equal(router.state.location.hash, '#section-1')
+        assert.match(render(), /부분 수정 결과/)
+        assert.match(render(), /보존할 일정/)
+      } finally {
+        router.dispose()
+      }
+    })
+
+    await t.test('a protected edit URL unlocks in place and missing sections show a recoverable error', async () => {
+      db.wikis[0].password = '1234'
+      cookie = ''
+      const path = `${wikiPagePath()}/edit?section=section-2`
+      const router = createMemoryRouter(routes, { initialEntries: ['/'] })
+      const render = () => renderToStaticMarkup(createElement(RouterProvider, { router }))
+      try {
+        await router.navigate(path)
+        assert.match(render(), /위키 비밀번호/)
+        const formData = new FormData()
+        formData.set('password', 'wrong')
+        await router.navigate(path, { formMethod: 'post', formData })
+        assert.match(render(), /비밀번호가 올바르지 않습니다/)
+        formData.set('password', '1234')
+        await router.navigate(path, { formMethod: 'post', formData })
+        assert.match(render(), /선택한 섹션의 제목과 본문/)
+        assert.doesNotMatch(render(), /## 개요/)
+        await router.navigate(`${wikiPagePath()}/edit?section=section-999`)
+        assert.match(render(), /편집할 섹션을 찾을 수 없습니다/)
+        assert.match(render(), /다시 시도/)
       } finally {
         router.dispose()
         db.wikis[0].password = ''
@@ -278,7 +349,7 @@ test('pages render with shared navigation and valid section links', async (t) =>
       assert.match(renderToStaticMarkup(createElement(WikiDocument, { wiki })), /class="wiki-infobox infobox-right"/)
 
       globalThis.window = { localStorage: { getItem: () => JSON.stringify(wiki) } }
-      const editHtml = await renderPage(`${wikiPagePath()}/edit`)
+      const editHtml = await renderPage(`${wikiPath()}/preview/edit`)
       assert.match(editHtml, /목차 1\.1\.1 제목/)
       assert.match(editHtml, /이미지 대체 텍스트/)
       assert.match(editHtml, /JSON으로 전체 문서 편집/)

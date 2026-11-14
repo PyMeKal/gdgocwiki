@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { prepareWiki } from '../utils/wiki.js'
 import WikiContent from './WikiContent.jsx'
 import WikiInfobox from './WikiInfobox.jsx'
@@ -14,22 +15,23 @@ function Contents({ sections }) {
   )
 }
 
-function Sections({ sections, depth = 0 }) {
+function Sections({ sections, depth = 0, editPath }) {
   return sections.map((section) => (
-    <WikiSection key={section.id} {...section} depth={depth}>
+    <WikiSection key={section.id} {...section} depth={depth}
+      actions={editPath && <Link className="button section-edit" to={`${editPath}?section=${encodeURIComponent(section.id)}`} aria-label={`${section.number}. ${section.title} 섹션 편집`}>편집</Link>}>
       <WikiContent blocks={section.blocks} />
-      <Sections sections={section.sections} depth={depth + 1} />
+      <Sections sections={section.sections} depth={depth + 1} editPath={editPath} />
     </WikiSection>
   ))
 }
 
-export default function WikiDocument({ wiki, actions }) {
+export default function WikiDocument({ wiki, actions, editPath }) {
   // 목차와 본문이 같은 트리·번호·ID를 사용해야 섹션 순서가 바뀌어도 링크가 일치합니다.
   const { sections, footnotes, infobox, warnings } = prepareWiki(wiki)
   return (
     <>
       <header className="article-header">
-        <div className="article-title-row"><h1>{wiki.title}</h1>{actions}</div>
+        <div className="article-title-row"><h1>{wiki.title}</h1>{editPath && <Link className="button" to={editPath} aria-label="전체 문서 편집">편집</Link>}{actions}</div>
         {wiki.description && <p className="muted small wiki-text">{wiki.description}</p>}
       </header>
       {warnings.length > 0 && <ul className="notice" aria-label="주석 확인 사항">{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}
@@ -37,7 +39,7 @@ export default function WikiDocument({ wiki, actions }) {
       {infobox?.placement === 'top' && <WikiInfobox infobox={infobox} />}
       {sections.length > 0 && <nav className="toc" aria-label="문서 목차"><h2>목차</h2><Contents sections={sections} /></nav>}
       {infobox && infobox.placement !== 'top' && <WikiInfobox infobox={infobox} />}
-      <div className="wiki-sections"><Sections sections={sections} /></div>
+      <div className="wiki-sections"><Sections sections={sections} editPath={editPath} /></div>
       {footnotes.length > 0 && (
         <section className="footnotes" aria-labelledby="footnotes-title">
           <h2 id="footnotes-title">주석</h2>

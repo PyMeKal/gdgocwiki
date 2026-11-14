@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { parseWikiData, parseWikiJson, readWikiJson } from '../src/utils/importWiki.js'
+import { getPageSection, parseWikiData, parseWikiJson, readWikiJson } from '../src/utils/importWiki.js'
 import { loadWiki, prepareWiki, saveWiki, validateWiki } from '../src/utils/wiki.js'
 import { isSafeUrl } from '../src/utils/wikiSchema.js'
 
@@ -49,6 +49,17 @@ test('unheaded or empty content is preserved and unsupported fields are ignored'
   for (const key of ['infobox', 'footnotes', 'references']) assert.equal(wiki[key], undefined)
   assert.deepEqual(parseWikiData(page('')).wiki.sections, [])
   assert.equal(parseWikiData({ title: '분류 없음', content: '' }).wiki.category, '')
+})
+
+test('section editing uses the renderer boundaries and preserves the exact original source', () => {
+  const content = '소개\r\n## 동일\r\n첫 본문\r\n### 하위 제목\r\n##동일\r\n둘째 본문\r\n##마지막'
+  const first = getPageSection(content, 'section-1')
+  assert.equal(first.content, '## 동일\r\n첫 본문\r\n### 하위 제목\r\n')
+  assert.equal(getPageSection(content, 'section-2').content, '##동일\r\n둘째 본문\r\n')
+  assert.equal(getPageSection(content, 'section-3').content, '##마지막')
+  assert.equal(content.slice(first.start, first.end), first.content)
+  for (const id of ['', 'section-0', 'section-4', 'section-01', 'invalid']) assert.throws(() => getPageSection(content, id), /섹션을 찾을 수 없습니다/)
+  assert.throws(() => getPageSection('', 'section-1'), /섹션을 찾을 수 없습니다/)
 })
 
 test('invalid API fields and oversized content fail before replacing a document', () => {
