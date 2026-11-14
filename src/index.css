@@ -4,7 +4,7 @@
   background: #f5f6f5;
   font-size: 15px;
   line-height: 1.75;
-  --green: #FF9E3D;
+  --green: #A79BE6;
   --border: #dce3de;
   --muted: #65736b;
 }
@@ -88,7 +88,8 @@ input[type="file"]::file-selector-button { border: 1px solid #bccac0; border-rad
 .wiki-section > * + * { margin-top: 18px; }
 .footnote-reference { font-size: 11px; font-weight: 400; line-height: 1; white-space: normal; }
 .footnote-reference > a { padding: 3px; }
-.footnotes { border-top: 1px solid var(--border); margin-top: 36px; padding-top: 20px; font-size: 13px; }
+.footnote-tooltip { position: fixed; inset: auto; margin: 0; max-height: calc(50dvh - 24px); overflow: auto; padding: 12px 16px; border: 1px solid var(--border); border-radius: 6px; background: white; color: #26332e; box-shadow: 0 4px 16px #26332e26; font: inherit; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.footnotes { clear: both; border-top: 1px solid var(--border); margin-top: 36px; padding-top: 20px; font-size: 13px; }
 .footnotes h2 { font-size: 17px; }
 .footnotes ol { list-style: none; padding: 0; }
 .footnotes li { margin-top: 8px; scroll-margin-top: 24px; overflow-wrap: anywhere; white-space: pre-wrap; }
@@ -105,10 +106,27 @@ input[type="file"]::file-selector-button { border: 1px solid #bccac0; border-rad
 .category span { padding: 0 6px; color: #b0bab3; }
 .toc { display: table; max-width: 100%; margin-top: 24px; padding: 16px 24px; border: 1px solid var(--border); background: #fdfefd; }
 .toc h2 { font-size: 17px; }
-.toc ol { margin: 8px 0 0; padding-left: 22px; font-size: 14px; }
+.toc ol { list-style: none; margin: 8px 0 0; padding-left: 0; font-size: 14px; }
+.toc ol ol { padding-left: 20px; }
 .toc li { padding-left: 4px; }
 .wiki-section { margin-top: 32px; scroll-margin-top: 24px; }
-.wiki-section h2 { font-size: 23px; border-bottom: 1px solid #cdd7cf; padding-bottom: 7px; margin-bottom: 18px; }
+.wiki-section-heading { font-size: 23px; border-bottom: 1px solid #cdd7cf; padding-bottom: 7px; margin-bottom: 18px; overflow-wrap: anywhere; }
+.wiki-section .wiki-section .wiki-section-heading { font-size: 20px; }
+/* 정보 표는 DOM에서 본문 앞에 두고, right 배치일 때만 데스크톱에서 옆으로 띄웁니다. */
+.wiki-infobox { max-width: 100%; margin-top: 24px; border: 1px solid var(--border); background: #fdfefd; overflow-wrap: anywhere; }
+.wiki-infobox h2 { padding: 14px 16px; font-size: 18px; background: #edf3ee; }
+.wiki-infobox th { width: 32%; }
+.infobox-right { float: right; width: min(320px, 45%); margin: 24px 0 20px 24px; }
+.wiki-sections { display: flow-root; min-width: 0; }
+.wiki-image { margin: 18px 0; max-width: 100%; }
+.wiki-image img { display: block; max-width: 100%; height: auto; margin: auto; }
+.wiki-image figcaption { padding: 8px 12px; font-size: 13px; color: var(--muted); white-space: pre-wrap; }
+.wiki-preview { margin-top: 28px; }
+.wiki-preview > h2 { margin-bottom: 12px; }
+.wiki-preview .wiki-article { margin-top: 12px; }
+.json-editor { margin-top: 28px; }
+.json-editor textarea, #wiki-json-text { font-family: ui-monospace, monospace; font-size: 13px; }
+.wiki-article::after { content: ''; display: block; clear: both; }
 .section-number { margin-right: 6px; font-weight: 400; }
 .wiki-section p, .content-list { font-size: 14px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -148,6 +166,8 @@ th { background: #edf3ee; font-weight: 600; }
   .upload-area { padding: 20px 16px; }
   .wiki-layout { grid-template-columns: minmax(0, 1fr); }
   .wiki-sidebar { display: none; }
+  /* 좁은 화면에서는 옆 배치를 해제해 표와 본문이 각각 전체 너비를 사용하게 합니다. */
+  .infobox-right { float: none; width: 100%; margin: 24px 0 0; }
   .section-heading { align-items: flex-start; }
   .section-heading .small { white-space: nowrap; }
   .site-footer { margin-top: 32px; }

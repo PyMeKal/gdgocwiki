@@ -1,19 +1,22 @@
-const links = [
-  { page: 'home', href: './', label: '홈' },
-  { page: 'form', href: './?page=form', label: '대화 올리기' },
-  { page: 'wiki', href: './?page=wiki', label: '위키 보기' },
-]
+import { Link, NavLink, useMatch } from 'react-router'
+import { wikiPath } from '../utils/paths.js'
 
-export default function Header({ currentPage }) {
+export default function Header() {
+  const match = useMatch('/wiki/:wikiId/*')
+  const links = [
+    { to: '/', label: '홈', end: true },
+    { to: '/form', label: '대화 올리기' },
+    { to: wikiPath(match?.params.wikiId), label: '위키 보기' },
+  ]
   return (
     <header className="site-header">
       <nav className="nav-inner" aria-label="주 메뉴">
-        <a className="brand" href="./">대화위키</a>
+        <Link className="brand" to="/">대화위키</Link>
         <div className="nav-links">
-          {links.map(({ page, href, label }) => (
-            <a key={page} href={href} aria-current={currentPage === page ? 'page' : undefined}>
+          {links.map(({ to, label, end }) => (
+            <NavLink key={to} to={to} end={end}>
               {label}
-            </a>
+            </NavLink>
           ))}
         </div>
       </nav>

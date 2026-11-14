@@ -1,39 +1,13 @@
 import { defaultWiki } from '../data/wiki.js'
+import { validateWiki } from './wikiSchema.js'
 
 const storageKey = 'conversation-wiki:busan:v1'
 
-export function validateWiki(wiki) {
-  if (!wiki || typeof wiki.title !== 'string' || !wiki.title.trim() || wiki.title.length > 100 || typeof wiki.description !== 'string') {
-    throw new Error('문서 제목을 1~100자로 입력해주세요.')
-  }
-  if (!Array.isArray(wiki.sections) || wiki.sections.length === 0) {
-    throw new Error('목차는 하나 이상 필요합니다.')
-  }
-  const ids = new Set()
-  for (const section of wiki.sections) {
-    if (!section || typeof section.id !== 'string' || !/^[a-z][a-z0-9-]*$/.test(section.id) || ids.has(section.id) ||
-        typeof section.title !== 'string' || !section.title.trim() || !Array.isArray(section.blocks)) {
-      throw new Error('목차 제목과 구성을 확인해주세요.')
-    }
-    ids.add(section.id)
-    for (const block of section.blocks) {
-      const strings = (values) => Array.isArray(values) && values.every((value) => typeof value === 'string')
-      if (!block || !(
-        (block.type === 'paragraph' && typeof block.text === 'string') ||
-        (block.type === 'list' && strings(block.items)) ||
-        (block.type === 'table' && typeof block.caption === 'string' && typeof block.header === 'boolean' &&
-          Array.isArray(block.rows) && block.rows.length > 0 && Array.isArray(block.rows[0]) && block.rows[0].length > 0 &&
-          block.rows.every((row) => strings(row) && row.length === block.rows[0].length))
-      )) {
-        throw new Error('본문 형식이 올바르지 않습니다.')
-      }
-    }
-  }
-}
+export { validateWiki } from './wikiSchema.js'
 
 export function loadWiki() {
   try {
-    // shortcut: 예시 위키 하나를 이 브라우저에 저장하며, 여러 문서·공동 편집을 지원할 때 API로 교체합니다.
+    // shortcut: 위키 하나를 이 브라우저에 저장하며, 여러 문서·공동 편집을 지원할 때 API로 교체합니다.
     const saved = window.localStorage.getItem(storageKey)
     if (saved === null) return { wiki: defaultWiki, error: '' }
     const wiki = JSON.parse(saved)
@@ -45,6 +19,7 @@ export function loadWiki() {
 }
 
 export function saveWiki(wiki) {
+  // 잘못된 편집 결과가 기존 저장 문서를 덮어쓰지 않도록 저장 전에 검사합니다.
   validateWiki(wiki)
   try {
     window.localStorage.setItem(storageKey, JSON.stringify(wiki))
@@ -53,29 +28,68 @@ export function saveWiki(wiki) {
   }
 }
 
+// 저장 원본은 유지하고, 화면에 필요한 섹션 번호와 주석 참조 정보를 별도 객체에 구성합니다.
 export function prepareWiki(wiki) {
   const footnotes = []
+  const warnings = []
+  const definitions = new Map((wiki.footnotes || []).map((note) => [note.id, note]))
+  const shared = new Map()
+  function reference(note) {
+    // 주석 번호가 같아도 참조 위치마다 ID를 달리해 각각의 본문으로 돌아갈 수 있게 합니다.
+    const referenceId = note.references.length === 0 ? `footnote-ref-${note.number}` : `footnote-ref-${note.number}-${note.references.length + 1}`
+    note.references.push(referenceId)
+    return { number: note.number, content: note.content, referenceId }
+  }
+  function addNote(content, url) {
+    const note = { number: footnotes.length + 1, content, references: [] }
+    if (url) note.url = url
+    footnotes.push(note)
+    return note
+  }
   const annotate = (text) => {
     const parts = []
     let start = 0
-    for (const match of text.matchAll(/\[\*\s+([^\]]+)\]/g)) {
-      if (!match[1].trim()) continue
-      parts.push(text.slice(start, match.index))
-      const note = { number: footnotes.length + 1, content: match[1].trim() }
-      footnotes.push(note)
-      parts.push(note)
+    // 직접 작성한 [* 내용]과 정의를 공유하는 [^id]를 읽은 순서대로 처리합니다.
+    for (const match of text.matchAll(/\[\*\s+([^\]]+)\]|\[\^([a-zA-Z0-9_-]+)\]/g)) {
+      let note
+      if (match[2]) {
+        const definition = definitions.get(match[2])
+        if (!definition) {
+          warnings.push(`정의되지 않은 주석 ${match[0]}을 원문 그대로 표시합니다.`)
+          continue
+        }
+        note = shared.get(match[2])
+        if (!note) {
+          note = addNote(definition.content, definition.url)
+          shared.set(match[2], note)
+        }
+      } else {
+        if (!match[1].trim()) continue
+        note = addNote(match[1].trim())
+      }
+      parts.push(text.slice(start, match.index), reference(note))
       start = match.index + match[0].length
     }
     parts.push(text.slice(start))
     return parts
   }
-  const sections = wiki.sections.map((section) => ({
+  // 정보 표가 본문보다 먼저 표시되므로 정보 표의 주석에 먼저 번호를 부여합니다.
+  const infobox = wiki.infobox ? { ...wiki.infobox, fields: wiki.infobox.fields.map((field) => ({ ...field, value: annotate(field.value) })) } : undefined
+  const visit = (nodes, prefix = '') => nodes.map((section, index) => ({
     ...section,
+    number: prefix ? `${prefix}.${index + 1}` : `${index + 1}`,
     blocks: section.blocks.map((block) => {
       if (block.type === 'paragraph') return { ...block, text: annotate(block.text) }
       if (block.type === 'list') return { ...block, items: block.items.map(annotate) }
-      return { ...block, rows: block.rows.map((row) => row.map(annotate)) }
+      if (block.type === 'table') return { ...block, rows: block.rows.map((row) => row.map(annotate)) }
+      return block
     }),
+    sections: visit(section.sections || [], prefix ? `${prefix}.${index + 1}` : `${index + 1}`),
   }))
-  return { sections, footnotes }
+  const sections = visit(wiki.sections)
+  // 본문에서 사용하지 않은 정의도 참고용 주석으로 남겨 입력 정보를 잃지 않게 합니다.
+  for (const definition of definitions.values()) {
+    if (!shared.has(definition.id)) addNote(definition.content, definition.url)
+  }
+  return { sections, footnotes, infobox, warnings: [...new Set(warnings)] }
 }

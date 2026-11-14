@@ -1,5 +1,7 @@
+import { Link } from 'react-router'
 import ButtonLink from '../components/ButtonLink.jsx'
 import Tag from '../components/Tag.jsx'
+import { wikiPagePath, wikiPath } from '../utils/paths.js'
 
 export default function HomePage() {
   return (
@@ -12,8 +14,9 @@ export default function HomePage() {
           <h1 id="welcome-title">안녕하세요, 대화위키입니다.</h1>
           <p className="intro">단톡방에 흩어진 약속과 정보를 한곳에 모아보세요.<br />함께 나눈 이야기를 찾기 쉬운 위키로 남깁니다.</p>
           <div className="actions">
-            <ButtonLink href="./?page=form" primary>대화 올리기 <span aria-hidden="true">→</span></ButtonLink>
-            <ButtonLink href="./?page=wiki">예시 위키 둘러보기</ButtonLink>
+            <ButtonLink to="/form" primary>대화 올리기 <span aria-hidden="true">→</span></ButtonLink>
+            <ButtonLink to={wikiPath()}>예시 위키 둘러보기</ButtonLink>
+            <ButtonLink to={`${wikiPath()}/import`}>JSON으로 위키 만들기</ButtonLink>
           </div>
         </section>
 
@@ -28,10 +31,10 @@ export default function HomePage() {
 
         <section className="home-section" aria-labelledby="example-title">
           <div className="section-heading"><h2 id="example-title">어떤 위키가 만들어질까요?</h2><span className="muted small">예시 문서</span></div>
-          <a className="example-link" href="./?page=wiki">
+          <Link className="example-link" to={wikiPagePath()}>
             <div><Tag>여행</Tag><h3>2026년 부산 여행</h3><p>친구들과 정한 2박 3일 일정부터 숙소, 준비물까지.</p></div>
             <span className="example-arrow" aria-hidden="true">→</span>
-          </a>
+          </Link>
         </section>
       </main>
     </>

@@ -1,3 +1,5 @@
-export default function ButtonLink({ href, primary = false, children }) {
-  return <a className={primary ? 'button primary' : 'button'} href={href}>{children}</a>
+import { Link } from 'react-router'
+
+export default function ButtonLink({ to, primary = false, children }) {
+  return <Link className={primary ? 'button primary' : 'button'} to={to}>{children}</Link>
 }

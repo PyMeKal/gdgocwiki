@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import { readChatFile } from '../utils/readChatFile.js'
 
-export default function ChatFileUpload({ value, onChange }) {
+export default function ChatFileUpload({ value, onChange, disabled = false }) {
   const inputId = useId()
   const inputRef = useRef(null)
   const request = useRef(0)
@@ -9,7 +9,7 @@ export default function ChatFileUpload({ value, onChange }) {
   const [error, setError] = useState('')
 
   async function loadFiles(files) {
-    if (!files.length) return
+    if (disabled || !files.length) return
     const currentRequest = ++request.current
     setError('')
     setIsReading(true)
@@ -30,6 +30,7 @@ export default function ChatFileUpload({ value, onChange }) {
   }
 
   function removeFile() {
+    if (disabled) return
     request.current += 1
     inputRef.current.value = ''
     setError('')
@@ -46,6 +47,7 @@ export default function ChatFileUpload({ value, onChange }) {
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => {
           event.preventDefault()
+          if (disabled) return
           inputRef.current.value = ''
           loadFiles(event.dataTransfer.files)
         }}
@@ -56,6 +58,7 @@ export default function ChatFileUpload({ value, onChange }) {
           id={inputId}
           name="chat"
           type="file"
+          disabled={disabled}
           accept=".txt,text/plain"
           aria-describedby={`${inputId}-help${error ? ` ${inputId}-error` : ''}`}
           aria-invalid={Boolean(error)}
@@ -66,7 +69,7 @@ export default function ChatFileUpload({ value, onChange }) {
           {isReading ? '대화 파일을 읽는 중입니다…' : value ? '대화 파일을 불러왔습니다.' : ''}
         </p>
         {value && <p className="uploaded-file">{value.file.name} · {Math.ceil(value.file.size / 1024).toLocaleString()}KB</p>}
-        {(value || isReading) && <button className="button" type="button" onClick={removeFile}>파일 삭제</button>}
+        {(value || isReading) && <button className="button" type="button" disabled={disabled} onClick={removeFile}>파일 삭제</button>}
         {error && <p id={`${inputId}-error`} className="upload-error small" role="alert">{error}</p>}
       </div>
     </div>
