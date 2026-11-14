@@ -2,10 +2,11 @@ import assert from 'node:assert/strict'
 import { after, before, beforeEach, test } from 'node:test'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
-import { uploadAction } from '../src/api/routeHandlers.js'
+import { readFile } from 'node:fs/promises'
+import { generationLoader, uploadAction } from '../src/api/routeHandlers.js'
 import * as api from '../src/api/wikis.js'
 import { handlers } from '../src/mocks/handlers.js'
-import { db, DEMO_WIKI_ID, resetDb } from '../src/mocks/db.js'
+import { configureDbStorage, db, DEMO_WIKI_ID, resetDb } from '../src/mocks/db.js'
 
 const server = setupServer(...handlers)
 const originalFetch = globalThis.fetch
@@ -146,8 +147,11 @@ test('invalid bodies, missing resources and upload errors use common JSON errors
 async function finishJob(wikiId, mode, chatIds) {
   const job = await api.generatePages(wikiId, { mode, chatIds })
   assert.equal(job.status, 'PENDING')
+  const stored = db.jobs.find((item) => item.jobId === job.jobId)
+  stored.startedAt = Date.now() - 1500
   assert.equal((await api.getGeneration(wikiId, job.jobId)).status, 'PROCESSING')
-  const done = await api.getGeneration(wikiId, job.jobId)
+  stored.startedAt = Date.now() - 6001
+  const done = await generationLoader({ params: { wikiId, jobId: job.jobId } })
   assert.equal(done.status, 'COMPLETED')
   assert.deepEqual(await api.getGeneration(wikiId, job.jobId), done)
   return done
@@ -156,7 +160,8 @@ async function finishJob(wikiId, mode, chatIds) {
 test('generation simulates polling, merge and regeneration while preserving manual pages', async () => {
   const wiki = await api.createWiki({ name: '생성 테스트' })
   const manual = await api.createPage(wiki.id, { title: '직접 작성', category: 'PERSON', content: '보존할 문서' })
-  const chat = await api.uploadChat(wiki.id, new File(['대화'], 'chat.txt'))
+  const text = await readFile(new URL('../public/examples/kakao-chat.txt', import.meta.url), 'utf8')
+  const chat = await api.uploadChat(wiki.id, new File([text], 'chat.txt'))
   const generated = await finishJob(wiki.id, 'MERGE', [chat.id])
   assert.equal(generated.createdPages, 3)
   assert.equal(generated.updatedPages, 0)
@@ -187,7 +192,9 @@ test('generation validates ownership and mode, and reports FAILED if its source 
   await assert.rejects(api.getGeneration(DEMO_WIKI_ID, job.jobId), errorIs(401, 'WIKI_PASSWORD_REQUIRED'))
   const other = await api.createWiki({ name: '다른 위키' })
   await assert.rejects(api.getGeneration(other.id, job.jobId), errorIs(404, 'JOB_NOT_FOUND'))
+  db.jobs.find((item) => item.jobId === job.jobId).startedAt = Date.now() - 1500
   assert.equal((await api.getGeneration(wiki.id, job.jobId)).status, 'PROCESSING')
+  db.jobs.find((item) => item.jobId === job.jobId).startedAt = Date.now() - 6001
   db.chats = db.chats.filter((item) => item.id !== chat.id)
   assert.equal((await api.getGeneration(wiki.id, job.jobId)).status, 'FAILED')
   assert.deepEqual((await api.getPages(wiki.id)).pages, [])
@@ -214,15 +221,16 @@ function uploadRequest({ name = '새 대화 위키', wikiId = '', file = new Fil
   return { request: new Request('http://localhost/form', { method: 'POST', body }) }
 }
 
-test('upload form action creates a wiki and uploads the original file to that wiki', async () => {
+test('upload form action redirects to the job after creating a wiki and uploading its file', async () => {
   const result = await uploadAction(uploadRequest())
-  assert.equal(result.error, undefined)
-  assert.equal((await api.getWiki(result.wiki.id)).name, '새 대화 위키')
-  const { chats } = await api.getChats(result.wiki.id)
+  assert.equal(result.status, 302)
+  const wiki = db.wikis.at(-1)
+  assert.equal((await api.getWiki(wiki.id)).name, '새 대화 위키')
+  const { chats } = await api.getChats(wiki.id)
   assert.equal(chats.length, 1)
-  assert.equal(chats[0].id, result.chat.id)
   assert.equal(chats[0].fileName, '대화.txt')
   assert.equal(chats[0].messageCount, 2)
+  assert.equal(result.headers.get('Location'), `/wiki/${wiki.id}/generations/${db.jobs[0].jobId}`)
 })
 
 test('upload validation avoids creating a wiki and a failed upload can retry without duplicate creation', async () => {
@@ -238,8 +246,139 @@ test('upload validation avoids creating a wiki and a failed upload can retry wit
   assert.equal(db.wikis.length, count + 1)
   server.resetHandlers()
   const retried = await uploadAction(uploadRequest({ wikiId: failed.wiki.id }))
-  assert.equal(retried.error, undefined)
-  assert.equal(retried.wiki.id, failed.wiki.id)
+  assert.equal(retried.status, 302)
+  assert.ok(retried.headers.get('Location').startsWith(`/wiki/${failed.wiki.id}/generations/`))
   assert.equal(db.wikis.length, count + 1)
   assert.equal((await api.getChats(failed.wiki.id)).chats.length, 1)
+})
+
+test('generation is time-based and page saves are idempotent after partial failures', async () => {
+  const wiki = await api.createWiki({ name: '느린 변환' })
+  const text = await readFile(new URL('../public/examples/kakao-chat.txt', import.meta.url), 'utf8')
+  const chat = await api.uploadChat(wiki.id, new File([text], 'example.txt'))
+  const job = await api.generatePages(wiki.id, { chatIds: [chat.id], mode: 'MERGE' })
+  const params = { wikiId: wiki.id, jobId: job.jobId }
+  assert.equal((await api.getGeneration(wiki.id, job.jobId)).status, 'PENDING')
+  assert.equal((await api.getGeneration(wiki.id, job.jobId)).status, 'PENDING')
+  assert.equal((await generationLoader({ params })).status, 'PENDING')
+  assert.deepEqual((await api.getPages(wiki.id)).pages, [])
+  db.jobs[0].startedAt = Date.now() - 6001
+  let calls = 0
+  server.use(http.post('http://localhost/wikis/:wikiId/pages', async ({ request }) => {
+    calls += 1
+    const body = await request.clone().json()
+    if (body.generationIndex === 1) return HttpResponse.json({ message: '저장 실패' }, { status: 500 })
+  }))
+  await assert.rejects(generationLoader({ params }), /저장 실패/)
+  assert.equal((await api.getPages(wiki.id)).pages.length, 1)
+  server.resetHandlers()
+  const done = await generationLoader({ params })
+  assert.equal(done.status, 'COMPLETED')
+  assert.equal(done.createdPages, 3)
+  assert.equal(calls, 2)
+  await generationLoader({ params })
+  const { pages } = await api.getPages(wiki.id)
+  assert.equal(pages.length, 3)
+  assert.equal(pages[0].title, '부산 여행')
+  assert.match((await api.getPage(wiki.id, pages[0].id)).content, /##개요\n친구들과 부산/)
+  assert.doesNotMatch((await api.getPage(wiki.id, pages[0].id)).content, /\[민수\]/)
+  const other = await api.createWiki({ name: '다른 위키' })
+  await assert.rejects(api.createPage(other.id, { ...done.pages[0], generationJobId: job.jobId, generationIndex: 0 }), errorIs(400, 'INVALID_REQUEST'))
+})
+
+test('generation request failure preserves the uploaded chat for retry', async () => {
+  server.use(http.post('http://localhost/wikis/:wikiId/generations', () => HttpResponse.json({ message: '요청 실패' }, { status: 500 })))
+  const failed = await uploadAction(uploadRequest())
+  assert.equal(failed.error, '요청 실패')
+  assert.ok(failed.chat.id)
+  server.resetHandlers()
+  const input = uploadRequest({ wikiId: failed.wiki.id })
+  const data = await input.request.formData()
+  data.set('chatId', failed.chat.id)
+  const result = await uploadAction({ request: new Request('http://localhost/form', { method: 'POST', body: data }) })
+  assert.equal(result.status, 302)
+  assert.equal((await api.getChats(failed.wiki.id)).chats.length, 1)
+})
+
+// IndexedDB의 read/write 경계를 모사하고 요청 처리·롤백·재로딩은 실제 MSW 핸들러로 검증합니다.
+function storedDatabase() {
+  let snapshot
+  return {
+    read: async () => structuredClone(snapshot),
+    write: async (value) => { snapshot = structuredClone(value) },
+  }
+}
+
+test('generated wiki, pages, chats and jobs can be fetched after memory is reset', async () => {
+  const storage = storedDatabase()
+  configureDbStorage(storage)
+  try {
+    const text = await readFile(new URL('../public/examples/kakao-chat.txt', import.meta.url), 'utf8')
+    const response = await uploadAction(uploadRequest({ file: new File([text], 'example.txt') }))
+    const wikiId = response.headers.get('Location').split('/')[2]
+    const jobId = response.headers.get('Location').split('/').at(-1)
+    resetDb() // 새 탭·새로고침처럼 메모리의 생성 데이터를 제거합니다.
+    assert.equal((await api.getWiki(wikiId)).name, '새 대화 위키')
+    assert.equal((await api.getChats(wikiId)).chats.length, 1)
+    const saved = await storage.read()
+    saved.jobs.find((job) => job.jobId === jobId).startedAt = Date.now() - 6001
+    await storage.write(saved)
+    const done = await generationLoader({ params: { wikiId, jobId } })
+    resetDb()
+    assert.equal((await api.getGeneration(wikiId, jobId)).status, 'COMPLETED')
+    const { pages } = await api.getPages(wikiId)
+    assert.equal(pages.length, 3)
+    assert.equal((await api.getPage(wikiId, pages[0].id)).title, '부산 여행')
+    assert.deepEqual(pages.map((page) => page.id), done.createdPageIds)
+    await generationLoader({ params: { wikiId, jobId } })
+    assert.equal((await api.getPages(wikiId)).pages.length, 3)
+    await api.deletePage(wikiId, pages[0].id)
+    resetDb()
+    await assert.rejects(api.getPage(wikiId, pages[0].id), errorIs(404, 'PAGE_NOT_FOUND'))
+  } finally {
+    configureDbStorage(null)
+  }
+})
+
+test('persistent mock DB serializes writes, refreshes external changes and retains auth sessions', async () => {
+  const storage = storedDatabase()
+  configureDbStorage(storage)
+  try {
+    const wikis = await Promise.all([api.createWiki({ name: '첫째' }), api.createWiki({ name: '둘째' })])
+    resetDb()
+    for (const wiki of wikis) assert.equal((await api.getWiki(wiki.id)).name, wiki.name)
+    const saved = await storage.read()
+    saved.wikis.find((wiki) => wiki.id === wikis[0].id).name = '다른 탭에서 변경'
+    await storage.write(saved)
+    assert.equal((await api.getWiki(wikis[0].id)).name, '다른 탭에서 변경')
+    const unlocked = await send(`/wikis/${DEMO_WIKI_ID}/unlock`, { method: 'POST', body: { password: '1234' } })
+    const cookie = unlocked.headers.get('set-cookie').split(';')[0]
+    resetDb()
+    assert.equal((await send(`/wikis/${DEMO_WIKI_ID}`, { cookie })).status, 200)
+    assert.equal((await send(`/wikis/${DEMO_WIKI_ID}`)).status, 401)
+  } finally {
+    configureDbStorage(null)
+  }
+})
+
+test('storage failures do not report success or overwrite previously saved data', async () => {
+  const storage = storedDatabase()
+  configureDbStorage(storage)
+  try {
+    const wiki = await api.createWiki({ name: '보존' })
+    const before = await storage.read()
+    configureDbStorage({ ...storage, write: async () => { throw new Error('quota') } })
+    await assert.rejects(api.updateWiki(wiki.id, { name: '저장 실패' }), errorIs(500, 'INTERNAL_SERVER_ERROR'))
+    assert.deepEqual(await storage.read(), before)
+    assert.equal(db.wikis.find((item) => item.id === wiki.id).name, '보존')
+    configureDbStorage(storage)
+    resetDb()
+    assert.equal((await api.getWiki(wiki.id)).name, '보존')
+    const invalid = { ...before, pages: null }
+    configureDbStorage({ ...storage, read: async () => invalid })
+    await assert.rejects(api.getWiki(wiki.id), errorIs(500, 'INTERNAL_SERVER_ERROR'))
+    assert.deepEqual(await storage.read(), before)
+  } finally {
+    configureDbStorage(null)
+  }
 })

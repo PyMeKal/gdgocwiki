@@ -1,8 +1,9 @@
-import { isSafeUrl, isWikiBlock, reservedSectionIds, validateWiki } from './wikiSchema.js'
+import { validateWiki } from './wikiSchema.js'
+// import { isSafeUrl, isWikiBlock, reservedSectionIds } from './wikiSchema.js'
 
 const maxBytes = 5 * 1024 * 1024
 
-// 입력 오류는 저장을 막고, 개별 항목 오류는 경고로 돌려 유효한 나머지 내용을 미리볼 수 있게 합니다.
+// 파일 입력도 API 응답과 같은 필드 검사·섹션 변환을 거칩니다.
 export function parseWikiJson(text) {
   if (typeof text !== 'string' || new TextEncoder().encode(text).length > maxBytes) throw new Error('JSON은 5MB 이하로 입력해주세요.')
   let raw
@@ -12,9 +13,9 @@ export function parseWikiJson(text) {
   } catch {
     throw new Error('JSON 문법이 올바르지 않습니다. 따옴표·쉼표·괄호를 확인해주세요.')
   }
-  if (!raw || Array.isArray(raw) || typeof raw !== 'object') throw new Error('JSON 최상위 값은 문서 객체여야 합니다.')
-  if (typeof raw.title !== 'string' || !raw.title.trim() || raw.title.length > 100) throw new Error('JSON에 1~100자의 title이 필요합니다.')
+  return parseWikiData(raw)
 
+  /* API에서 제공하지 않는 description·sections·footnotes·references·infobox 입력 처리는 보류합니다.
   const warnings = []
   // 오류가 많은 파일도 경고 목록 때문에 화면이 과도하게 커지지 않도록 제한합니다.
   function warn(path, message) {
@@ -151,6 +152,33 @@ export function parseWikiJson(text) {
   }
   validateWiki(wiki)
   return { wiki, warnings }
+  */
+}
+
+// API 응답과 파일 입력을 같은 WikiDocument 구조로 변환합니다.
+export function parseWikiData(raw) {
+  if (!raw || Array.isArray(raw) || typeof raw !== 'object') throw new Error('JSON 최상위 값은 문서 객체여야 합니다.')
+  if (typeof raw.title !== 'string' || !raw.title.trim() || raw.title.length > 100) throw new Error('JSON에 1~100자의 title이 필요합니다.')
+
+  if (typeof raw.content !== 'string') throw new Error('JSON의 content는 문자열이어야 합니다.')
+  if (new TextEncoder().encode(raw.content).length > maxBytes) throw new Error('본문은 5MB 이하로 입력해주세요.')
+  if (raw.category !== undefined && typeof raw.category !== 'string') throw new Error('JSON의 category는 문자열이어야 합니다.')
+
+  const wiki = { title: raw.title, category: raw.category ?? '', description: '', sections: [] }
+  let section
+  let start = 0
+  for (const match of raw.content.matchAll(/^##(?!#)[ \t]*([^\r\n]*)(?:\r\n|\n|\r|$)/gm)) {
+    if (wiki.sections.length === 1000) throw new Error('섹션은 최대 1,000개까지 지원합니다.')
+    if (section) section.blocks[0].text = raw.content.slice(start, match.index)
+    else wiki.description = raw.content.slice(0, match.index)
+    section = { id: `section-${wiki.sections.length + 1}`, title: match[1].trim(), blocks: [{ type: 'paragraph', text: '' }] }
+    wiki.sections.push(section)
+    start = match.index + match[0].length
+  }
+  if (section) section.blocks[0].text = raw.content.slice(start)
+  else wiki.description = raw.content
+  validateWiki(wiki)
+  return { wiki, warnings: [] }
 }
 
 // 큰 파일은 읽기 전에 거르고, 파일 읽기 실패와 JSON 형식 오류를 각각 안내합니다.

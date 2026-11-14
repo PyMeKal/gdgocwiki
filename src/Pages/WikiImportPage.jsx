@@ -68,7 +68,7 @@ export default function WikiImportPage() {
       <main id="main" className="container form-page wiki-import-page">
         <Breadcrumb>JSON으로 위키 만들기</Breadcrumb>
         <h1>JSON으로 위키 만들기</h1>
-        <p className="intro">JSON 파일을 선택하거나 내용을 붙여 넣으면 문서 구조에 맞춰 위키를 만듭니다.</p>
+        <p className="intro">title·category·content가 있는 JSON을 입력하면 content의 ## 제목을 목차와 본문 섹션으로 만듭니다.</p>
         <form className="panel" onSubmit={parseText}>
           <h2>JSON 입력</h2>
           <p className="muted small"><a href="/examples/wiki.json" download>예시 JSON 다운로드</a> · <Link to={`${wikiPath(wikiId)}/preview`}>현재 위키 보기</Link></p>
@@ -85,7 +85,7 @@ export default function WikiImportPage() {
               setSaved(false)
               setReading(false)
               setError('')
-            }} placeholder={'{"title":"문서 제목","sections":[]}'} />
+            }} placeholder={'{"title":"문서 제목","category":"EVENT","content":"##개요\\n본문"}'} />
           </div>
           <div className="actions"><button className="button" type="submit" disabled={!text.trim() || reading}>입력한 JSON 미리보기</button></div>
           <Notice>파일은 서버로 전송하지 않습니다. 미리보기를 확인한 뒤 저장하면 이 브라우저의 현재 위키가 새 문서로 교체됩니다. 기존 문서를 보관하려면 먼저 편집 화면에서 JSON을 복사해주세요.</Notice>

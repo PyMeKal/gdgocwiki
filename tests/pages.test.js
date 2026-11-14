@@ -11,6 +11,7 @@ import { wikiPagePath, wikiPath } from '../src/utils/paths.js'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
 import { handlers } from '../src/mocks/handlers.js'
+import { createWiki, generatePages, uploadChat } from '../src/api/wikis.js'
 import { db, resetDb } from '../src/mocks/db.js'
 
 test('pages render with shared navigation and valid section links', async (t) => {
@@ -85,7 +86,7 @@ test('pages render with shared navigation and valid section links', async (t) =>
         }
 
         for (const [, href] of html.matchAll(/href="([^"#][^"]*)"/g)) {
-          assert.ok(href === '/' || href === '/form' || href === '/examples/wiki.json' || href.startsWith('/wiki/'), `unexpected page link: ${href}`)
+          assert.ok(href === '/' || href === '/form' || href === '/examples/wiki.json' || href === '/examples/kakao-chat.txt' || href.startsWith('/wiki/'), `unexpected page link: ${href}`)
           assert.ok(!href.includes('?page='), `legacy page link: ${href}`)
         }
 
@@ -105,7 +106,11 @@ test('pages render with shared navigation and valid section links', async (t) =>
         if (path === wikiPagePath()) {
           assert.match(html, /<title>2026년 부산 여행 · 우리들의 위키 · 대화위키<\/title>/)
           assert.match(html, /친구들과 부산에 가기로 계획한 여행이다/)
-          assert.match(html, /버전 3/)
+          assert.match(html, /class="toc"/)
+          assert.match(html, /href="#section-1">1\. 개요/)
+          assert.match(html, /href="#section-2">2\. 일정/)
+          assert.match(html, /id="section-1" class="wiki-section"/)
+          assert.doesNotMatch(html, /## 개요|## 일정|버전 undefined/)
           assert.ok(requests.includes(`GET /wikis/${db.wikis[0].id}`))
           assert.ok(requests.includes(`GET /wikis/${db.wikis[0].id}/pages/page_001`))
         }
@@ -184,6 +189,24 @@ test('pages render with shared navigation and valid section links', async (t) =>
       api.resetHandlers()
     })
 
+    await t.test('generation route shows waiting, completion and a link to persisted wiki pages', async () => {
+      const wiki = await createWiki({ name: '대기 화면 테스트' })
+      const chat = await uploadChat(wiki.id, new File(['[문서: 화면 테스트 | EVENT]\n[가상 인물] [오후 1:00] ##개요\n본문'], 'chat.txt'))
+      const job = await generatePages(wiki.id, { chatIds: [chat.id], mode: 'MERGE' })
+      const path = `${wikiPath(wiki.id)}/generations/${job.jobId}`
+      const waiting = await renderPage(path)
+      assert.match(waiting, /위키를 만들고 있습니다/)
+      assert.doesNotMatch(waiting, /위키로 이동/)
+      db.jobs.find((item) => item.jobId === job.jobId).startedAt = Date.now() - 6001
+      const done = await renderPage(path)
+      assert.match(done, /다 제작되었습니다!/)
+      assert.match(done, /문서 1개를 저장했습니다/)
+      assert.ok(done.includes(`href="${wikiPath(wiki.id)}"`))
+      assert.match(await renderPage(wikiPath(wiki.id)), /화면 테스트/)
+      db.jobs.find((item) => item.jobId === job.jobId).status = 'FAILED'
+      assert.match(await renderPage(path), /문서를 만들지 못했습니다/)
+    })
+
     await t.test('saved edits render safely with updated contents and sequential footnotes', async () => {
       const wiki = structuredClone(defaultWiki)
       wiki.title = '<script>alert("title")</script>'
@@ -212,10 +235,26 @@ test('pages render with shared navigation and valid section links', async (t) =>
       }
     })
 
+    await t.test('API responses with only title, category and content render through WikiDocument', async () => {
+      api.use(http.get('http://localhost/wikis/team-42/pages/travel-17', () => HttpResponse.json({
+        title: 'API 전용 문서', category: 'PERSON', content: '##개요\n첫 문단\n\n둘째 문단\n## 활동\n활동 본문',
+      })))
+      try {
+        const html = await renderPage('/wiki/team-42/pages/travel-17')
+        assert.match(html, /<h1>API 전용 문서<\/h1>/)
+        assert.match(html, /href="#section-1">1\. 개요/)
+        assert.match(html, /href="#section-2">2\. 활동/)
+        assert.match(html, /첫 문단\n\n둘째 문단/)
+        assert.match(html, /활동 본문/)
+        assert.doesNotMatch(html, /##|undefined|wiki-infobox/)
+      } finally {
+        api.resetHandlers()
+      }
+    })
+
     await t.test('example JSON renders nested contents, infobox, images, shared footnotes and references', async () => {
       const { default: WikiDocument } = await server.ssrLoadModule('/src/components/WikiDocument.jsx')
-      const { wiki, warnings } = parseWikiJson(await readFile(new URL('../public/examples/wiki.json', import.meta.url), 'utf8'))
-      assert.deepEqual(warnings, [])
+      const wiki = JSON.parse(await readFile(new URL('./fixtures/wikiDocument.json', import.meta.url), 'utf8'))
       const html = renderToStaticMarkup(createElement(WikiDocument, { wiki }))
       assert.match(html, /href="#details">1\.1\.1\. 세부 항목/)
       assert.match(html, /<h4 class="wiki-section-heading">.*1\.1\.1\.<\/a> 세부 항목<\/h4>/)
@@ -247,14 +286,15 @@ test('pages render with shared navigation and valid section links', async (t) =>
 
     await t.test('partial and hostile JSON displays supplied text without scripts or invented document data', async () => {
       const { default: WikiDocument } = await server.ssrLoadModule('/src/components/WikiDocument.jsx')
-      const { wiki } = parseWikiJson(JSON.stringify({ title: '<script>title()</script>', sections: [
-        { blocks: [{ type: 'paragraph', text: '<img src=x onerror=alert(1)>[^missing]' }, { type: 'image', src: 'javascript:alert(1)' }, { type: 'link', url: 'data:text/html,bad' }] },
-      ], infobox: { fields: [{ label: '없음' }] } }))
+      const { wiki } = parseWikiJson(JSON.stringify({ title: '<script>title()</script>', category: '<img src=x onerror=alert(1)>',
+        content: '##<script>section()</script>\n<img src=x onerror=alert(1)>[^missing]',
+        infobox: { fields: [{ label: '없음' }] }, references: [{ url: 'javascript:bad' }],
+      }))
       const html = renderToStaticMarkup(createElement(WikiDocument, { wiki }))
       assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/)
       assert.match(html, /\[\^missing\]/)
       assert.doesNotMatch(html, /<script|<img|javascript:|data:text\/html|wiki-infobox|부산|예시 문서/)
-      const minimal = parseWikiJson('{"title":"제목만 있는 문서"}').wiki
+      const minimal = parseWikiJson('{"title":"제목만 있는 문서","content":""}').wiki
       const minimalHtml = renderToStaticMarkup(createElement(WikiDocument, { wiki: minimal }))
       assert.match(minimalHtml, /<h1>제목만 있는 문서<\/h1>/)
       assert.doesNotMatch(minimalHtml, /class="toc"|wiki-infobox|참고 자료/)

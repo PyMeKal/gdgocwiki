@@ -3,8 +3,7 @@ import { useBlocker, useParams } from 'react-router'
 import Breadcrumb from '../components/Breadcrumb.jsx'
 import ButtonLink from '../components/ButtonLink.jsx'
 import Notice from '../components/Notice.jsx'
-import { loadWiki, saveWiki } from '../utils/wiki.js'
-import { parseWikiJson } from '../utils/importWiki.js'
+import { loadWiki, saveWiki, validateWiki } from '../utils/wiki.js'
 import { wikiPath } from '../utils/paths.js'
 
 function BlockEditor({ block, id, onChange }) {
@@ -103,7 +102,6 @@ export default function WikiEditPage() {
   const [saved, setSaved] = useState(false)
   const [jsonText, setJsonText] = useState('')
   const [jsonBase, setJsonBase] = useState('')
-  const [jsonWarnings, setJsonWarnings] = useState([])
   // 아직 적용하지 않은 JSON도 변경 사항으로 취급해 화면을 떠날 때 입력 유실을 경고합니다.
   const jsonDirty = jsonText !== jsonBase
   const dirty = JSON.stringify(draft) !== JSON.stringify(savedWiki) || jsonDirty
@@ -184,7 +182,7 @@ export default function WikiEditPage() {
             }
           }}>
             <summary>JSON으로 전체 문서 편집</summary>
-            <p className="muted small">주요 정보 표·공용 주석·참고 자료를 포함한 전체 문서를 수정하거나 복사할 수 있습니다. 적용하면 위 편집 내용이 JSON 내용으로 교체됩니다.</p>
+            <p className="muted small">브라우저에 저장된 내부 문서 구조를 수정하거나 복사할 수 있습니다. API 형식의 JSON은 JSON 입력 화면에서 가져와주세요. 적용하면 위 편집 내용이 JSON 내용으로 교체됩니다.</p>
             <div className="field">
               <label htmlFor="edit-wiki-json">문서 JSON</label>
               <textarea id="edit-wiki-json" rows={16} spellCheck={false} value={jsonText} onChange={(event) => {
@@ -194,15 +192,15 @@ export default function WikiEditPage() {
             </div>
             <button className="button" type="button" onClick={() => {
               try {
-                const { wiki, warnings } = parseWikiJson(jsonText)
+                if (new TextEncoder().encode(jsonText).length > 5 * 1024 * 1024) throw new Error('JSON은 5MB 이하로 입력해주세요.')
+                const wiki = JSON.parse(jsonText.replace(/^\uFEFF/, ''))
+                validateWiki(wiki)
                 update(wiki)
                 setJsonBase(jsonText)
-                setJsonWarnings(warnings)
               } catch (parseError) {
                 setError(parseError.message)
               }
             }}>JSON 내용 적용</button>
-            {jsonWarnings.length > 0 && <ul className="notice">{jsonWarnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}
           </details>
           <div className="editor-save">
             {error && <p className="upload-error" role="alert">{error}</p>}

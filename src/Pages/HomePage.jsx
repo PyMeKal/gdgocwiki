@@ -16,7 +16,6 @@ export default function HomePage() {
           <div className="actions">
             <ButtonLink to="/form" primary>대화 올리기 <span aria-hidden="true">→</span></ButtonLink>
             <ButtonLink to={wikiPath()}>예시 위키 둘러보기</ButtonLink>
-            <ButtonLink to={`${wikiPath()}/import`}>JSON으로 위키 만들기</ButtonLink>
           </div>
         </section>
 

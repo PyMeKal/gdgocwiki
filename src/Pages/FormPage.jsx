@@ -10,11 +10,10 @@ export default function FormPage() {
   const [chat, setChat] = useState(null)
   const fetcher = useFetcher()
   const busy = fetcher.state !== 'idle'
-  const uploaded = Boolean(fetcher.data?.chat)
 
   function handleSubmit(event) {
     event.preventDefault()
-    if (busy || uploaded || !chat) return
+    if (busy || !chat) return
     const form = new FormData(event.currentTarget)
     // 드래그로 선택한 파일도 파일 선택 입력과 동일하게 전송합니다.
     form.set('chat', chat.file)
@@ -33,12 +32,14 @@ export default function FormPage() {
         <form className="panel" aria-labelledby="form-title" onSubmit={handleSubmit} aria-busy={busy}>
           <h2 id="form-title">새 위키 문서</h2>
           <input type="hidden" name="wikiId" value={fetcher.data?.wiki?.id ?? ''} />
+          <input type="hidden" name="chatId" value={fetcher.data?.chat?.id ?? ''} />
           <p className="muted">문서의 제목을 정하고 카카오톡 대화 파일을 선택해주세요.</p>
           <div className="field">
             <label htmlFor="wiki-title">위키 제목</label>
             <input id="wiki-title" name="title" type="text" placeholder="예: 2026년 부산 여행" maxLength="100" required readOnly={busy || Boolean(fetcher.data?.wiki)} />
           </div>
-          <ChatFileUpload value={chat} onChange={setChat} disabled={busy || uploaded} />
+          <p className="muted small"><a href="/examples/kakao-chat.txt" download>실험용 대화 파일 다운로드</a></p>
+          <ChatFileUpload value={chat} onChange={setChat} disabled={busy || Boolean(fetcher.data?.chat)} />
           {chat && (
             <section className="chat-preview" aria-labelledby="preview-title">
               <h3 id="preview-title">대화 미리보기</h3>
@@ -46,14 +47,11 @@ export default function FormPage() {
               <pre>{chat.text.slice(0, 2000)}</pre>
             </section>
           )}
-          <Notice>업로드 버튼을 누르면 위키를 만들고 선택한 대화 파일을 서버로 전송합니다. 대화 분석·문서 자동 생성은 아직 연결하지 않았습니다.</Notice>
+          <Notice>업로드 버튼을 누르면 위키를 만들고 선택한 대화 파일을 서버로 전송합니다. 제출 후 문서 생성 화면으로 이동합니다. 개발 모드에서는 예시 변환기가 AI 생성을 대신합니다.</Notice>
           {fetcher.data?.error && <p className="upload-error" role="alert">{fetcher.data.error}</p>}
-          {uploaded && <p role="status">대화를 업로드했습니다. 메시지 수: {fetcher.data.chat.messageCount}</p>}
           <div className="actions">
-            <button className="button primary" type="submit" disabled={busy || !chat || uploaded}>{busy ? '업로드 중…' : uploaded ? '업로드 완료' : '대화 업로드'}</button>
-            {uploaded && <ButtonLink to={wikiPath(fetcher.data.wiki.id)}>업로드한 위키 보기</ButtonLink>}
+            <button className="button primary" type="submit" disabled={busy || !chat}>{busy ? '업로드 중…' : '위키 만들기'}</button>
             <ButtonLink to={wikiPath()}>예시 위키 보기</ButtonLink>
-            <ButtonLink to={`${wikiPath()}/import`}>JSON으로 위키 만들기</ButtonLink>
           </div>
         </form>
 

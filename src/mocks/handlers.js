@@ -1,7 +1,8 @@
 import { http, HttpResponse } from 'msw'
 import { API_BASE_URL } from '../api/wikis.js'
 import { readChatFile } from '../utils/readChatFile.js'
-import { db, generationPages } from './db.js'
+import { convertChat } from './convertChat.js'
+import { db, withDb } from './db.js'
 
 const root = `${API_BASE_URL}/wikis`
 const wikiRoute = `${root}/:wikiId`
@@ -32,21 +33,22 @@ async function json(request) {
 function resolve(handler, { unlock = false } = {}) {
   return async (context) => {
     try {
-      const { params, cookies } = context
-      let wiki
-      if (params.wikiId) {
-        wiki = db.wikis.find((item) => item.id === params.wikiId)
-        requireValue(wiki, 404, 'WIKI_NOT_FOUND', '위키를 찾을 수 없습니다.')
-        if (!unlock && wiki.password) {
-          requireValue(db.sessions[cookies[cookieName(wiki.id)]] === wiki.id,
-            401, 'WIKI_PASSWORD_REQUIRED', '비밀번호 인증이 필요합니다.')
+      return await withDb(async () => {
+        const { params, cookies } = context
+        let wiki
+        if (params.wikiId) {
+          wiki = db.wikis.find((item) => item.id === params.wikiId)
+          requireValue(wiki, 404, 'WIKI_NOT_FOUND', '위키를 찾을 수 없습니다.')
+          if (!unlock && wiki.password) {
+            requireValue(db.sessions[cookies[cookieName(wiki.id)]] === wiki.id,
+              401, 'WIKI_PASSWORD_REQUIRED', '비밀번호 인증이 필요합니다.')
+          }
         }
-      }
-      return await handler({ ...context, wiki })
+        return await handler({ ...context, wiki })
+      })
     } catch (error) {
       if (error instanceof Response) return error
-      console.error('[MSW] API 처리 실패', error)
-      return HttpResponse.json({ code: 'INTERNAL_SERVER_ERROR', message: '서버 내부 오류입니다.' }, { status: 500 })
+      return HttpResponse.json({ code: 'INTERNAL_SERVER_ERROR', message: '가상 DB 처리 또는 저장에 실패했습니다. 브라우저 저장 공간·권한을 확인한 뒤 다시 시도해주세요.' }, { status: 500 })
     }
   }
 }
@@ -62,27 +64,14 @@ function completeGeneration(wiki, job) {
     job.status = 'FAILED'
     return
   }
-  if (job.mode === 'REGENERATE') {
-    db.pages = db.pages.filter((page) => page.wikiId !== wiki.id || !page.generationKey)
+  try {
+    const text = job.chatIds.map((chatId) => db.chats.find((chat) => chat.id === chatId).text).join('\n')
+    job.pages = convertChat(text)
+  } catch {
+    job.status = 'FAILED'
+    return
   }
-  job.createdPages = 0
-  job.updatedPages = 0
-  job.createdPageIds = []
-  // shortcut: AI 대신 고정 문서를 생성한다. 실제 생성 서버 연결 시 교체한다.
-  for (const template of generationPages) {
-    const existing = db.pages.find((page) => page.wikiId === wiki.id && page.generationKey === template.id)
-    if (existing) {
-      Object.assign(existing, { content: template.content, version: existing.version + 1, updatedAt: now() })
-      job.updatedPages += 1
-    } else {
-      const page = {
-        ...template, id: id('page'), wikiId: wiki.id, generationKey: template.id, version: 1, updatedAt: now(),
-      }
-      db.pages.push(page)
-      job.createdPages += 1
-      job.createdPageIds.push(page.id)
-    }
-  }
+
   job.status = 'COMPLETED'
 }
 
@@ -147,7 +136,7 @@ export const handlers = [
     }
     // shortcut: 메시지 수는 빈 줄을 제외한 줄 수다. 실제 카카오톡 파서 연결 시 교체한다.
     const chat = {
-      id: id('chat'), wikiId: wiki.id, fileName: file.name,
+      id: id('chat'), wikiId: wiki.id, fileName: file.name, text,
       messageCount: text.split(/\r\n|\n|\r/).filter((line) => line.trim()).length, uploadedAt: now(),
     }
     db.chats.push(chat)
@@ -165,7 +154,7 @@ export const handlers = [
       && Array.isArray(body.chatIds) && body.chatIds.length > 0 && body.chatIds.every(nonempty))
     requireValue(body.chatIds.every((chatId) => db.chats.some((chat) => chat.wikiId === wiki.id && chat.id === chatId)),
       404, 'CHAT_NOT_FOUND', '대화 내역을 찾을 수 없습니다.')
-    const job = { jobId: id('job'), wikiId: wiki.id, chatIds: body.chatIds, mode: body.mode, status: 'PENDING' }
+    const job = { jobId: id('job'), wikiId: wiki.id, chatIds: body.chatIds, mode: body.mode, status: 'PENDING', startedAt: Date.now(), createdPages: 0, updatedPages: 0, createdPageIds: [] }
     db.jobs.push(job)
     return HttpResponse.json({ jobId: job.jobId, status: job.status }, { status: 202 })
   })),
@@ -173,11 +162,14 @@ export const handlers = [
   http.get(`${wikiRoute}/generations/:jobId`, resolve(({ wiki, params }) => {
     const job = db.jobs.find((item) => item.wikiId === wiki.id && item.jobId === params.jobId)
     requireValue(job, 404, 'JOB_NOT_FOUND', '생성 작업을 찾을 수 없습니다.')
-    if (job.status === 'PENDING') job.status = 'PROCESSING'
-    else if (job.status === 'PROCESSING') completeGeneration(wiki, job)
+    // shortcut: 경과 시간으로 작업을 모사합니다. 실제 서버에서는 백그라운드 작업 상태를 조회합니다.
+    if (['PENDING', 'PROCESSING'].includes(job.status)) {
+      if (Date.now() - job.startedAt >= 6000) completeGeneration(wiki, job)
+      else if (Date.now() - job.startedAt >= 1000) job.status = 'PROCESSING'
+    }
     const { jobId, status, createdPages, updatedPages, createdPageIds } = job
     return HttpResponse.json({ jobId, status, ...(status === 'COMPLETED' ? {
-      createdPages, updatedPages, createdPageIds,
+      createdPages, updatedPages, createdPageIds, pages: job.pages,
     } : {}) })
   })),
   // GET /wikis/:wikiId/pages — 위키 문서 목록 조회
@@ -188,9 +180,35 @@ export const handlers = [
   http.post(`${wikiRoute}/pages`, resolve(async ({ wiki, request }) => {
     const body = await json(request)
     requireValue(nonempty(body.title) && nonempty(body.category) && typeof body.content === 'string')
+    let job
+    let generationKey
+    if (body.generationJobId !== undefined) {
+      job = db.jobs.find((item) => item.jobId === body.generationJobId && item.wikiId === wiki.id)
+      requireValue(job?.status === 'COMPLETED' && Number.isInteger(body.generationIndex))
+      const expected = job.pages[body.generationIndex]
+      requireValue(expected && ['title', 'category', 'content'].every((key) => expected[key] === body[key]))
+      const saved = job.createdPageIds[body.generationIndex]
+      if (saved) return HttpResponse.json({ id: saved, title: body.title }, { status: 200 })
+      generationKey = `generated-${body.generationIndex}`
+      if (job.mode === 'REGENERATE' && !job.createdPageIds.length) {
+        db.pages = db.pages.filter((page) => page.wikiId !== wiki.id || !page.generationKey)
+      }
+      const existing = db.pages.find((page) => page.wikiId === wiki.id && page.generationKey === generationKey)
+      if (existing) {
+        Object.assign(existing, { title: body.title, category: body.category, content: body.content, version: existing.version + 1, updatedAt: now() })
+        job.updatedPages += 1
+        job.createdPageIds[body.generationIndex] = existing.id
+        return HttpResponse.json({ id: existing.id, title: existing.title })
+      }
+    }
     const page = {
       id: id('page'), wikiId: wiki.id, title: body.title, category: body.category,
       content: body.content, version: 1, updatedAt: now(),
+    }
+    if (job) {
+      page.generationKey = generationKey
+      job.createdPages += 1
+      job.createdPageIds[body.generationIndex] = page.id
     }
     db.pages.push(page)
     return HttpResponse.json({ id: page.id, title: page.title }, { status: 201 })

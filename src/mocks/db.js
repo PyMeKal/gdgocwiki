@@ -26,9 +26,52 @@ const seed = {
   sessions: {},
 }
 
-// shortcut: 메모리 데이터는 새로고침하면 초기화된다. 영속 저장이 필요할 때 실제 서버로 교체한다.
+// 브라우저에서는 요청 경계에서 IndexedDB와 동기화하고, Node 테스트는 메모리 DB를 사용합니다.
 export const db = structuredClone(seed)
 
 export function resetDb() {
   Object.assign(db, structuredClone(seed))
+}
+
+let storage
+let pending = Promise.resolve()
+
+export function configureDbStorage(value) {
+  storage = value
+}
+
+function restoreSnapshot(snapshot) {
+  if (!snapshot || !['wikis', 'chats', 'pages', 'jobs'].every((key) =>
+    Array.isArray(snapshot[key]) && snapshot[key].every((record) => record && typeof record === 'object')) ||
+    !snapshot.sessions || typeof snapshot.sessions !== 'object' || Array.isArray(snapshot.sessions) ||
+    !Object.values(snapshot.sessions).every((value) => typeof value === 'string') ||
+    !snapshot.wikis.every((wiki) => typeof wiki.id === 'string' && typeof wiki.name === 'string' && typeof wiki.password === 'string') ||
+    !snapshot.pages.every((page) => typeof page.id === 'string' && typeof page.wikiId === 'string' && typeof page.title === 'string' && typeof page.content === 'string') ||
+    !snapshot.chats.every((chat) => typeof chat.id === 'string' && typeof chat.wikiId === 'string') ||
+    !snapshot.jobs.every((job) => typeof job.jobId === 'string' && typeof job.wikiId === 'string' && Array.isArray(job.chatIds))) {
+    throw new Error('저장된 가상 DB 형식을 확인해주세요. 기존 데이터는 유지했습니다.')
+  }
+  for (const key of Object.keys(seed)) db[key] = snapshot[key]
+}
+
+export function withDb(operation) {
+  if (!storage) return operation()
+  const currentStorage = storage
+  const execute = async () => {
+    const saved = await currentStorage.read()
+    restoreSnapshot(saved ?? structuredClone(seed))
+    const before = structuredClone(db)
+    try {
+      const response = await operation()
+      if (response.ok) await currentStorage.write(structuredClone(db))
+      else restoreSnapshot(before)
+      return response
+    } catch (error) {
+      restoreSnapshot(before)
+      throw error
+    }
+  }
+  const result = pending.then(() => currentStorage.run ? currentStorage.run(execute) : execute())
+  pending = result.catch(() => {})
+  return result
 }

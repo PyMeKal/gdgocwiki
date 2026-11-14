@@ -51,6 +51,7 @@ export default function WikiDocument({ wiki, actions }) {
           ))}</ol>
         </section>
       )}
+      {/*wiki.category && <p className="category">분류: {wiki.category}</p>*/}
       {wiki.references?.length > 0 && (
         <section className="footnotes" aria-labelledby="references-title">
           <h2 id="references-title">참고 자료</h2>

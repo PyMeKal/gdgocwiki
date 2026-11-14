@@ -20,7 +20,6 @@ export default function WikiHomePage() {
         <div className="actions">
           <ButtonLink to="/form">새 대화 올리기</ButtonLink>
           <ButtonLink to={`${wikiPath(wikiId)}/preview`}>브라우저 문서 미리보기</ButtonLink>
-          <ButtonLink to={`${wikiPath(wikiId)}/import`}>JSON으로 위키 만들기</ButtonLink>
         </div>
       </main>
     </>
