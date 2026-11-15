@@ -284,9 +284,10 @@ test('seeded data can be accessed after unlock and db reset restores fixtures', 
   assert.deepEqual(db.sessions, {})
 })
 
-function uploadRequest({ name = '새 대화 위키', wikiId = '', file = new File(['첫 메시지\n두 번째 메시지'], '대화.txt') } = {}) {
+function uploadRequest({ name = '새 대화 위키', password = '', wikiId = '', file = new File(['첫 메시지\n두 번째 메시지'], '대화.txt') } = {}) {
   const body = new FormData()
   body.set('title', name)
+  body.set('password', password)
   body.set('wikiId', wikiId)
   body.set('chat', file)
   return { request: new Request('http://localhost/form', { method: 'POST', body }) }
@@ -306,7 +307,7 @@ test('upload form action redirects to the job after creating a wiki and uploadin
 
 test('upload validation avoids creating a wiki and a failed upload can retry without duplicate creation', async () => {
   const count = db.wikis.length
-  for (const input of [{ name: ' ' }, { name: new File(['제목'], 'title.txt') }, { file: new File(['본문'], 'chat.csv') }, { file: new File([], 'empty.txt') }]) {
+  for (const input of [{ name: ' ' }, { name: new File(['제목'], 'title.txt') }, { password: new File(['비밀번호'], 'password.txt') }, { file: new File(['본문'], 'chat.csv') }, { file: new File([], 'empty.txt') }]) {
     assert.ok((await uploadAction(uploadRequest(input))).error)
   }
   assert.equal(db.wikis.length, count)
@@ -406,6 +407,24 @@ test('generated wiki, pages, chats and jobs can be fetched after memory is reset
     await api.deletePage(wikiId, pages[0].id)
     resetDb()
     await assert.rejects(api.getPage(wikiId, pages[0].id), errorIs(404, 'PAGE_NOT_FOUND'))
+  } finally {
+    configureDbStorage(null)
+  }
+})
+
+test('separate browser storage returns 404 while the original storage retains the wiki', async () => {
+  const original = storedDatabase()
+  configureDbStorage(original)
+  try {
+    const wiki = await api.createWiki({ name: '일반 창 위키', password: '1234' })
+    resetDb()
+    await assert.rejects(api.getWiki(wiki.id), errorIs(401, 'WIKI_PASSWORD_REQUIRED'))
+    assert.equal((await original.read()).wikis.find((item) => item.id === wiki.id).name, '일반 창 위키')
+    configureDbStorage(storedDatabase()) // 시크릿 창처럼 별도 저장소를 사용합니다.
+    await assert.rejects(api.getWiki(wiki.id), errorIs(404, 'WIKI_NOT_FOUND'))
+    await assert.rejects(api.getPages(wiki.id), errorIs(404, 'WIKI_NOT_FOUND'))
+    configureDbStorage(original)
+    await assert.rejects(api.getWiki(wiki.id), errorIs(401, 'WIKI_PASSWORD_REQUIRED'))
   } finally {
     configureDbStorage(null)
   }

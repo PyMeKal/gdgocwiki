@@ -181,3 +181,11 @@ th { background: #edf3ee; font-weight: 600; }
   .nav-links a { font-size: 12px; }
   .welcome { padding: 24px 20px; }
 }
+
+.article-title-row h1 { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.wiki-share { position: relative; display: inline-flex; flex-shrink: 0; }
+.share-icon-button { padding: 10px; }
+.wiki-share-status { position: absolute; top: calc(100% + 8px); right: 0; z-index: 2; width: max-content; max-width: min(280px, 80vw); padding: 10px 12px; border: 1px solid var(--border); border-radius: 4px; background: white; color: #33483c; font-size: 14px; }
+.wiki-share-status input { margin-top: 8px; }
+
+.actions .wiki-share-status { left: 0; right: auto; max-width: min(240px, 65vw); }

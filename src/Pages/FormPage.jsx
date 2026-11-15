@@ -38,6 +38,11 @@ export default function FormPage() {
             <label htmlFor="wiki-title">위키 제목</label>
             <input id="wiki-title" name="title" type="text" placeholder="예: 2026년 부산 여행" maxLength="100" required readOnly={busy || Boolean(fetcher.data?.wiki)} />
           </div>
+          <div className="field">
+            <label htmlFor="wiki-password">위키 비밀번호 (선택)</label>
+            <input id="wiki-password" name="password" type="password" autoComplete="new-password" aria-describedby="password-help" readOnly={busy || Boolean(fetcher.data?.wiki)} />
+            <p id="password-help" className="muted small">설정하면 인증한 브라우저에서만 위키를 열 수 있습니다. 비워두면 비밀번호 없이 열립니다.</p>
+          </div>
           <p className="muted small"><a href="/examples/kakao-chat.txt" download>실험용 대화 파일 다운로드</a></p>
           <ChatFileUpload value={chat} onChange={setChat} disabled={busy || Boolean(fetcher.data?.chat)} />
           {chat && (

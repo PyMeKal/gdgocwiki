@@ -7,16 +7,19 @@ import { getPageSection, parseWikiData } from '../utils/importWiki.js'
 export async function uploadAction({ request }) {
   const form = await request.formData()
   const title = form.get('title')
+  const password = form.get('password') ?? ''
   const wikiId = form.get('wikiId')
   let wiki = typeof wikiId === 'string' && wikiId ? { id: wikiId } : null
   let chat = typeof form.get('chatId') === 'string' && form.get('chatId') ? { id: form.get('chatId') } : null
   try {
     const name = typeof title === 'string' ? title.trim() : ''
     if (!name || name.length > 100) throw new Error('100자 이내의 위키 제목을 입력해주세요.')
+    if (typeof password !== 'string') throw new Error('비밀번호를 문자열로 입력해주세요.')
     const file = form.get('chat')
     if (!(file instanceof File)) throw new Error('대화 파일을 선택해주세요.')
     await readChatFile(file)
-    wiki ??= await createWiki({ name })
+    wiki ??= await createWiki({ name, password })
+    if (password) await unlockWiki(wiki.id, password)
     chat ??= await uploadChat(wiki.id, file)
     const job = await generatePages(wiki.id, { chatIds: [chat.id], mode: 'MERGE' })
     return redirect(`${wikiPath(wiki.id)}/generations/${encodeURIComponent(job.jobId)}`)

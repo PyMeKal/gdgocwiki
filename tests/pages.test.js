@@ -97,8 +97,14 @@ test('pages render with shared navigation and valid section links', async (t) =>
           const inputId = fileInput.match(/id="([^"]+)"/)[1]
           assert.ok(html.includes(`for="${inputId}"`))
           assert.match(html, /type="file" accept="\.txt,text\/plain"/)
+          assert.match(html, /id="wiki-password" type="password" autoComplete="new-password" aria-describedby="password-help" name="password"/)
           assert.match(html, /maxLength="100"/)
           assert.match(html, /type="submit" disabled=""/)
+        }
+
+        if (path === wikiPath() || path === wikiPagePath()) {
+          assert.match(html, /aria-label="위키 URL 복사"/ )
+          assert.match(html, /share-icon-button/ )
         }
 
         if (path === wikiPath()) {
@@ -198,6 +204,59 @@ test('pages render with shared navigation and valid section links', async (t) =>
       }
     })
 
+    await t.test('protected wiki creation authenticates before upload and retries without duplication', async () => {
+      cookie = ''
+      const router = createMemoryRouter(routes, { initialEntries: ['/form'] })
+      const render = () => renderToStaticMarkup(createElement(RouterProvider, { router }))
+      const formData = new FormData()
+      formData.set('title', '비밀번호 위키')
+      formData.set('password', ' secret 1234 ')
+      formData.set('chat', new File(['[문서: 보호된 문서 | EVENT]\n[가상 인물] [오후 1:00] ##개요\n비공개 본문'], 'chat.txt'))
+      const submit = () => router.navigate('/form', { formMethod: 'post', formEncType: 'multipart/form-data', formData })
+      const count = db.wikis.length
+      try {
+        api.use(http.post('http://localhost/wikis/:wikiId/chats', () => HttpResponse.json({ message: '업로드 실패' }, { status: 500 })))
+        await submit()
+        assert.equal(Object.values(router.state.actionData)[0].error, '업로드 실패')
+        const wiki = db.wikis.at(-1)
+        assert.equal(wiki.name, '비밀번호 위키')
+        assert.equal(wiki.password, ' secret 1234 ')
+        assert.equal(db.wikis.length, count + 1)
+        assert.doesNotMatch(JSON.stringify(router.state.actionData), /secret 1234/)
+        api.resetHandlers()
+        cookie = '' // 인증 쿠키를 잃은 재시도에서도 같은 위키를 인증합니다.
+        formData.set('wikiId', wiki.id)
+        await submit()
+        assert.equal(db.wikis.length, count + 1)
+        assert.equal(db.chats.filter((chat) => chat.wikiId === wiki.id).length, 1)
+        assert.match(router.state.location.pathname, new RegExp(`^/wiki/${wiki.id}/generations/`))
+        const job = db.jobs.find((job) => job.wikiId === wiki.id)
+        job.startedAt = Date.now() - 6001
+        await router.revalidate()
+        const page = db.pages.find((page) => page.wikiId === wiki.id)
+        assert.ok(page)
+        cookie = ''
+        for (const path of [wikiPath(wiki.id), wikiPagePath(wiki.id, page.id), `${wikiPagePath(wiki.id, page.id)}/edit`, `/wiki/${wiki.id}/generations/${job.jobId}`]) {
+          await router.navigate(path)
+          assert.match(render(), /위키 비밀번호를 입력해주세요/)
+          assert.doesNotMatch(render(), /비공개 본문/)
+        }
+        const unlock = new FormData()
+        unlock.set('password', 'wrong')
+        await router.navigate(wikiPath(wiki.id), { formMethod: 'post', formData: unlock })
+        assert.match(render(), /비밀번호가 올바르지 않습니다/)
+        unlock.set('password', ' secret 1234 ')
+        await router.navigate(wikiPath(wiki.id), { formMethod: 'post', formData: unlock })
+        assert.match(render(), /보호된 문서/)
+        await router.navigate(wikiPagePath(wiki.id, page.id))
+        assert.match(render(), /비공개 본문/)
+      } finally {
+        router.dispose()
+        api.resetHandlers()
+        cookie = ''
+      }
+    })
+
     await t.test('edit submission redirects to the updated document and back navigation reloads the editor', async () => {
       const path = `${wikiPagePath('team-42', 'travel-17')}/edit`
       const router = createMemoryRouter(routes, { initialEntries: ['/'] })
@@ -267,10 +326,11 @@ test('pages render with shared navigation and valid section links', async (t) =>
       const path = `${wikiPath(wiki.id)}/generations/${job.jobId}`
       const waiting = await renderPage(path)
       assert.match(waiting, /위키를 만들고 있습니다/)
-      assert.doesNotMatch(waiting, /위키로 이동/)
+      assert.doesNotMatch(waiting, /위키로 이동|위키 URL 복사/)
       db.jobs.find((item) => item.jobId === job.jobId).startedAt = Date.now() - 6001
       const done = await renderPage(path)
       assert.match(done, /다 제작되었습니다!/)
+      assert.match(done, /aria-label="위키 URL 복사"/)
       assert.match(done, /문서 1개를 저장했습니다/)
       assert.ok(done.includes(`href="${wikiPath(wiki.id)}"`))
       assert.match(await renderPage(wikiPath(wiki.id)), /화면 테스트/)

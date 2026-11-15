@@ -10,6 +10,8 @@ async function start() {
     try {
       const { worker } = await import('./mocks/browser.js')
       await worker.start({
+        // 비밀번호와 대화 본문이 MSW 요청 로그에 노출되지 않도록 합니다.
+        quiet: true,
         onUnhandledFrame: 'bypass',
         serviceWorker: { url: `${import.meta.env.BASE_URL}mockServiceWorker.js` },
       })
