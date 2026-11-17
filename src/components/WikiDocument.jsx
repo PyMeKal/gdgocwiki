@@ -31,8 +31,10 @@ export default function WikiDocument({ wiki, actions, editPath }) {
   return (
     <>
       <header className="article-header">
-        <div className="article-title-row"><h1>{wiki.title}</h1>{editPath && <Link className="button" to={editPath} aria-label="전체 문서 편집">편집</Link>}{actions}</div>
+        <div className="article-title-row"><h1>{wiki.title}</h1>{!editPath && actions}</div>
         {wiki.description && <p className="muted small wiki-text">{wiki.description}</p>}
+        {editPath && <div className="article-tools"><span>Article</span><Link to={editPath} aria-label="전체 문서 편집">편집</Link>{actions}</div>}
+        {wiki.category && <p className="category">분류: {wiki.category}</p>}
       </header>
       {warnings.length > 0 && <ul className="notice" aria-label="주석 확인 사항">{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}
       {/* 오른쪽 배치도 목차 다음에 두어 모바일에서는 자연스럽게 본문 위로 쌓이게 합니다. */}
@@ -53,7 +55,6 @@ export default function WikiDocument({ wiki, actions, editPath }) {
           ))}</ol>
         </section>
       )}
-      {/*wiki.category && <p className="category">분류: {wiki.category}</p>*/}
       {wiki.references?.length > 0 && (
         <section className="footnotes" aria-labelledby="references-title">
           <h2 id="references-title">참고 자료</h2>

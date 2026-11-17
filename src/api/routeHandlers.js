@@ -30,7 +30,11 @@ export async function uploadAction({ request }) {
 
 export async function wikiLoader({ params }) {
   const [wiki, { pages }] = await Promise.all([getWiki(params.wikiId), getPages(params.wikiId)])
-  return { wiki, pages }
+  // 목록 API에 수정일이 없으면 기존 문서 조회 API로 정렬에 필요한 날짜만 보충합니다.
+  const datedPages = await Promise.all(pages.map(async (page) => page.updatedAt ? page : {
+    ...page, updatedAt: (await getPage(params.wikiId, page.id)).updatedAt,
+  }))
+  return { wiki, pages: datedPages }
 }
 
 export async function pageLoader({ params }) {

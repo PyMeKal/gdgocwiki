@@ -7,10 +7,7 @@ export default function CopyWikiUrlButton({ wikiId, iconOnly = false }) {
     <span className="wiki-share">
       <button className={`button${iconOnly ? ' share-icon-button' : ''}`} type="button" aria-label="위키 URL 복사" title="위키 URL 복사"
         onClick={async () => setResult(await copyWikiUrl(wikiId))}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-          <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-          <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" />
-        </svg>
+        <img src="/design/share.svg" alt="" />
         {!iconOnly && '위키 URL 복사'}
       </button>
       {result && <span className="wiki-share-status" role="status">

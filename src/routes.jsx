@@ -3,7 +3,7 @@ import App from './App.jsx'
 import PageLayout from './components/PageLayout.jsx'
 import GenerationPage from './Pages/GenerationPage.jsx'
 import FormPage from './Pages/FormPage.jsx'
-import HomePage from './Pages/HomePage.jsx'
+// import HomePage from './Pages/HomePage.jsx'
 import WikiHomePage from './Pages/WikiHomePage.jsx'
 import WikiPage from './Pages/WikiPage.jsx'
 import LocalWikiPage from './Pages/LocalWikiPage.jsx'
@@ -17,11 +17,12 @@ export const routes = [{
   element: <App />,
   hydrateFallbackElement: <PageLayout><main id="main" className="container form-page" role="status">불러오는 중입니다…</main></PageLayout>,
   children: [
-    { path: '/', element: <HomePage /> },
+    // { path: '/', element: <HomePage /> },
+    { path: '/', element: <WikiImportPage />, action: uploadAction },
     { path: '/form', element: <FormPage />, action: uploadAction },
     { path: '/wiki/:wikiId', element: <WikiHomePage />, loader: wikiLoader, action: unlockAction, errorElement: <WikiApiError /> },
     { path: '/wiki/:wikiId/generations/:jobId', element: <GenerationPage />, loader: generationLoader, action: unlockAction, errorElement: <WikiApiError /> },
-    { path: '/wiki/:wikiId/import', element: <WikiImportPage /> },
+    { path: '/wiki/:wikiId/import', element: <WikiImportPage />, action: uploadAction },
     { path: '/wiki/:wikiId/pages/:pagesId', element: <WikiPage />, loader: pageLoader, action: unlockAction, errorElement: <WikiApiError /> },
     { path: '/wiki/:wikiId/preview', element: <LocalWikiPage /> },
     { path: '/wiki/:wikiId/preview/edit', element: <WikiEditPage /> },

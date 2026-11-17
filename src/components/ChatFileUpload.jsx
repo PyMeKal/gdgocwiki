@@ -39,8 +39,8 @@ export default function ChatFileUpload({ value, onChange, disabled = false }) {
   }
 
   return (
-    <div className="field">
-      <label htmlFor={inputId}>카카오톡 대화 파일</label>
+    <div className="field chat-upload">
+      <label className="upload-label" htmlFor={inputId}>Upload file</label>
       <div
         className="upload-area"
         aria-busy={isReading}
@@ -52,8 +52,9 @@ export default function ChatFileUpload({ value, onChange, disabled = false }) {
           loadFiles(event.dataTransfer.files)
         }}
       >
-        <p>카카오톡 대화 파일을 선택하거나 여기에 끌어다 놓으세요.</p>
+        <img className="upload-icon" src="/design/upload.svg" alt="" /><label className="choose-export" htmlFor={inputId}>Choose a chat export</label><p className="muted small">카카오톡 대화 파일을 선택하거나 끌어다 놓으세요.</p>
         <input
+          className="sr-only"
           ref={inputRef}
           id={inputId}
           name="chat"
@@ -68,7 +69,7 @@ export default function ChatFileUpload({ value, onChange, disabled = false }) {
         <p className="upload-status small" role="status">
           {isReading ? '대화 파일을 읽는 중입니다…' : value ? '대화 파일을 불러왔습니다.' : ''}
         </p>
-        {value && <p className="uploaded-file">{value.file.name} · {Math.ceil(value.file.size / 1024).toLocaleString()}KB</p>}
+        {value && <p className="uploaded-file"><img src="/design/file.svg" alt="" />{value.file.name} · {Math.ceil(value.file.size / 1024).toLocaleString()}KB<img src="/design/check.svg" alt="" /></p>}
         {(value || isReading) && <button className="button" type="button" disabled={disabled} onClick={removeFile}>파일 삭제</button>}
         {error && <p id={`${inputId}-error`} className="upload-error small" role="alert">{error}</p>}
       </div>

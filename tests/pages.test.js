@@ -56,19 +56,19 @@ test('pages render with shared navigation and valid section links', async (t) =>
       }
     }
     const cases = [
-      ['/', '홈', '안녕하세요, 대화위키입니다.'],
-      ['/form', '대화 올리기', '새 위키 문서'],
-      [wikiPath(), '위키 보기', '문서 목록'],
-      [wikiPagePath(), '위키 보기', '2026년 부산 여행'],
-      [`${wikiPagePath()}/edit`, '위키 보기', '전체 문서 편집'],
-      [`${wikiPagePath()}/edit?section=section-2`, '위키 보기', '섹션 편집'],
-      [`${wikiPath()}/preview/edit`, '위키 보기', '문서 정보'],
-      [`${wikiPath()}/import`, '위키 보기', 'JSON 입력'],
+      ['/', 'Create', 'Good chats.'],
+      ['/form', 'Create', 'Add your conversation'],
+      [wikiPath(), 'My wikis', 'Your conversation, organized'],
+      [wikiPagePath(), 'My wikis', '2026년 부산 여행'],
+      [`${wikiPagePath()}/edit`, 'My wikis', '전체 문서 편집'],
+      [`${wikiPagePath()}/edit?section=section-2`, 'My wikis', '섹션 편집'],
+      [`${wikiPath()}/preview/edit`, 'My wikis', '문서 정보'],
+      [`${wikiPath()}/import`, 'Create', 'JSON 입력'],
       ['/unknown', null, '페이지를 찾을 수 없습니다.'],
-      ['/wiki/team-42/pages/travel-17', '위키 보기', '다른 문서'],
-      [`${wikiPath()}/preview`, '위키 보기', '2026년 부산 여행'],
-      ['/wiki/missing/pages/missing', '위키 보기', '요청한 위키 또는 문서를 찾을 수 없습니다.'],
-      ['/wiki/team-42/pages/travel-17/edit', '위키 보기', '전체 문서 편집'],
+      ['/wiki/team-42/pages/travel-17', 'My wikis', '다른 문서'],
+      [`${wikiPath()}/preview`, 'My wikis', '2026년 부산 여행'],
+      ['/wiki/missing/pages/missing', 'My wikis', '요청한 위키 또는 문서를 찾을 수 없습니다.'],
+      ['/wiki/team-42/pages/travel-17/edit', 'My wikis', '전체 문서 편집'],
     ]
 
     for (const [path, activeLabel, heading] of cases) {
@@ -76,11 +76,11 @@ test('pages render with shared navigation and valid section links', async (t) =>
         globalThis.window = { localStorage: { getItem: () => null } }
         const html = await renderPage(path)
         assert.ok(html.includes(heading))
-        assert.equal((html.match(/class="site-header"/g) || []).length, 1)
-        assert.equal((html.match(/class="site-footer"/g) || []).length, 1)
+        assert.equal((html.match(/class="site-header(?: article-site-header)?"/g) || []).length, 1)
+        assert.equal((html.match(/class="bottom-navigation"/g) || []).length, 1)
         assert.equal((html.match(/aria-current="page"/g) || []).length, activeLabel ? 1 : 0)
         assert.equal((html.match(/<title>/g) || []).length, 1)
-        if (activeLabel) assert.match(html, new RegExp(`aria-current="page"[^>]*>${activeLabel}</a>`))
+        if (activeLabel) assert.match(html, new RegExp(`aria-current="page"[^>]*><img[^>]*>${activeLabel}</a>`))
         assert.doesNotMatch(html, /(?:form|wiki)\.html/)
 
         for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
@@ -88,11 +88,11 @@ test('pages render with shared navigation and valid section links', async (t) =>
         }
 
         for (const [, href] of html.matchAll(/href="([^"#][^"]*)"/g)) {
-          assert.ok(href === '/' || href === '/form' || href === '/examples/wiki.json' || href === '/examples/kakao-chat.txt' || href.startsWith('/wiki/'), `unexpected page link: ${href}`)
+          assert.ok(href === '/' || href === '/form' || href === '/examples/wiki.json' || href === '/examples/kakao-chat.txt' || href.startsWith('/wiki/') || href.startsWith('/design/'), `unexpected page link: ${href}`)
           assert.ok(!href.includes('?page='), `legacy page link: ${href}`)
         }
 
-        if (path === '/form') {
+        if (path === '/' || path === '/form' || path.endsWith('/import')) {
           const fileInput = html.match(/<input\b[^>]*type="file"[^>]*>/)[0]
           const inputId = fileInput.match(/id="([^"]+)"/)[1]
           assert.ok(html.includes(`for="${inputId}"`))
@@ -107,7 +107,15 @@ test('pages render with shared navigation and valid section links', async (t) =>
           assert.match(html, /share-icon-button/ )
         }
 
+        assert.match(html, /<button type="button" aria-disabled="true"><img[^>]*>Explore<\/button>/)
+        assert.match(html, /<button type="button" aria-disabled="true"><img[^>]*>Settings<\/button>/)
+
         if (path === wikiPath()) {
+          assert.match(html, /aria-label="위키 문서 검색"/)
+          assert.match(html, /Modified /)
+          assert.match(html, /value="newest"/)
+          assert.match(html, /value="oldest"/)
+          assert.match(html, /value="title"/)
           assert.ok(html.includes(`href="${wikiPagePath()}"`))
         }
 
@@ -165,9 +173,9 @@ test('pages render with shared navigation and valid section links', async (t) =>
       const render = () => renderToStaticMarkup(createElement(RouterProvider, { router }))
       try {
         await router.navigate('/form')
-        assert.match(render(), /새 위키 문서/)
+        assert.match(render(), /Add your conversation/)
         await router.navigate(wikiPath('team-42'))
-        assert.match(render(), /문서 목록/)
+        assert.match(render(), /Your conversation, organized/)
         await router.navigate(wikiPagePath('team-42', 'travel-17'))
         assert.match(render(), /다른 문서/)
         assert.doesNotMatch(render(), /2026년 부산 여행/)

@@ -1,6 +1,6 @@
+import FormPage from './FormPage.jsx'
 import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import Breadcrumb from '../components/Breadcrumb.jsx'
 import ButtonLink from '../components/ButtonLink.jsx'
 import Notice from '../components/Notice.jsx'
 import WikiDocument from '../components/WikiDocument.jsx'
@@ -8,7 +8,7 @@ import { parseWikiJson, readWikiJson } from '../utils/importWiki.js'
 import { saveWiki } from '../utils/wiki.js'
 import { wikiPath } from '../utils/paths.js'
 
-export default function WikiImportPage() {
+function JsonWikiImport() {
   const { wikiId } = useParams()
   const [text, setText] = useState('')
   const [result, setResult] = useState(null)
@@ -64,10 +64,10 @@ export default function WikiImportPage() {
 
   return (
     <>
-      <title>JSON으로 위키 만들기 · 대화위키</title>
-      <main id="main" className="container form-page wiki-import-page">
-        <Breadcrumb>JSON으로 위키 만들기</Breadcrumb>
-        <h1>JSON으로 위키 만들기</h1>
+
+      <section className="wiki-import-page">
+
+        <h2>JSON으로 위키 만들기</h2>
         <p className="intro">title·category·content가 있는 JSON을 입력하면 content의 ## 제목을 목차와 본문 섹션으로 만듭니다.</p>
         <form className="panel" onSubmit={parseText}>
           <h2>JSON 입력</h2>
@@ -100,7 +100,11 @@ export default function WikiImportPage() {
           )}
         </form>
         {result && <section className="wiki-preview" aria-labelledby="wiki-preview-title"><h2 id="wiki-preview-title">미리보기</h2><article className="wiki-article"><WikiDocument wiki={result.wiki} /></article></section>}
-      </main>
+      </section>
     </>
   )
+}
+
+export default function WikiImportPage() {
+  return <FormPage><details className="json-import"><summary>JSON으로 위키 가져오기</summary><JsonWikiImport /></details></FormPage>
 }
