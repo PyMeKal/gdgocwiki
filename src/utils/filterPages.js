@@ -1,6 +1,6 @@
-export function filterPages(pages, query, sort) {
+export function filterPages(pages, query, sort, category = '') {
   const search = query.trim().toLocaleLowerCase()
-  return pages.filter((page) => `${page.title} ${page.category ?? ''}`.toLocaleLowerCase().includes(search))
+  return pages.filter((page) => (!category || page.category === category) && `${page.title} ${page.category ?? ''}`.toLocaleLowerCase().includes(search))
     .sort((a, b) => {
       if (sort === 'title') return a.title.localeCompare(b.title, 'ko')
       const first = Date.parse(a.updatedAt) || 0

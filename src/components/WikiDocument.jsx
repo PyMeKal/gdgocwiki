@@ -25,13 +25,14 @@ function Sections({ sections, depth = 0, editPath }) {
   ))
 }
 
-export default function WikiDocument({ wiki, actions, editPath }) {
+export default function WikiDocument({ wiki, actions, editPath, updatedAt }) {
   // 목차와 본문이 같은 트리·번호·ID를 사용해야 섹션 순서가 바뀌어도 링크가 일치합니다.
   const { sections, footnotes, infobox, warnings } = prepareWiki(wiki)
   return (
     <>
       <header className="article-header">
         <div className="article-title-row"><h1>{wiki.title}</h1>{!editPath && actions}</div>
+        {typeof updatedAt === 'string' && Number.isFinite(Date.parse(updatedAt)) && <p className="article-modified"><time dateTime={updatedAt}>Last edited: {new Date(updatedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Seoul' }).replaceAll(' ', '').replace(/\.$/, '')}</time></p>}
         {wiki.description && <p className="muted small wiki-text">{wiki.description}</p>}
         {editPath && <div className="article-tools"><span>Article</span><Link to={editPath} aria-label="전체 문서 편집">편집</Link>{actions}</div>}
         {wiki.category && <p className="category">분류: {wiki.category}</p>}

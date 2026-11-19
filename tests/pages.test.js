@@ -458,6 +458,16 @@ test('pages render with shared navigation and valid section links', async (t) =>
 
     })
 
+    await t.test('article timestamp matches the design and hides absent or invalid dates', async () => {
+      const { default: WikiDocument } = await server.ssrLoadModule('/src/components/WikiDocument.jsx')
+      const render = (updatedAt) => renderToStaticMarkup(createElement(WikiDocument, { wiki: defaultWiki, updatedAt }))
+      const html = render('2026-11-18T03:00:00Z')
+      assert.match(html, /<time dateTime="2026-11-18T03:00:00Z">Last edited: 2026\.11\.18<\/time>/)
+      assert.ok(html.indexOf('article-title-row') < html.indexOf('article-modified'))
+      for (const value of [undefined, null, '', 'invalid']) assert.doesNotMatch(render(value), /Last edited:/)
+      assert.match(await renderPage(wikiPagePath()), /class="article-modified"/)
+    })
+
     await t.test('partial and hostile JSON displays supplied text without scripts or invented document data', async () => {
       const { default: WikiDocument } = await server.ssrLoadModule('/src/components/WikiDocument.jsx')
       const { wiki } = parseWikiData({ title: '<script>title()</script>', category: '<img src=x onerror=alert(1)>',

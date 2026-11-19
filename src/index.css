@@ -243,7 +243,9 @@ input[type="password"] { width: 100%; }
 .wiki-statistics span { display: block; font-size: 10px; }
 .wiki-search { display: flex; align-items: center; gap: 10px; padding: 13px; background: white; border: 1px solid var(--border); border-radius: 11px; }
 .wiki-search input { min-width: 0; width: 100%; border: 0; background: none; color: inherit; font-size: 12px; }
-.all-articles { display: table; background: #262238; color: white; font-size: 10px; border-radius: 20px; padding: 8px 12px; margin: 14px 0 22px; }
+.article-categories { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0 22px; }
+.article-categories button { background: white; border: 1px solid var(--border); color: var(--muted); font-size: 10px; font-weight: 500; line-height: 1.45; border-radius: 20px; padding: 8px 12px; overflow-wrap: anywhere; max-width: 100%; }
+.article-categories button[aria-pressed="true"] { background: #262238; border-color: #262238; color: white; }
 .wiki-home-page .section-heading h2 { font-size: 15px; }
 .wiki-home-page .section-heading .small { font-size: 10px; }
 .sort-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0 12px; }
@@ -270,6 +272,7 @@ input[type="password"] { width: 100%; }
 .article-page .article-title-row { gap: 10px; }
 .article-page .article-header .button { padding: 8px 12px; font-size: 11px; border-radius: 3px; }
 .article-page .article-header > p { margin-top: 10px; font-size: 12px; }
+.article-page .article-header > .article-modified { margin-top: 10px; font-size: 10px; line-height: 1.55; color: #706c7b; }
 .article-page .wiki-sidebar { display: none; }
 .article-page .toc { display: block; background: #f6f5f8; padding: 14px; border-radius: 3px; margin-top: 22px; }
 .article-page .toc h2 { font-size: 16px; }
