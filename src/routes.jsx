@@ -6,26 +6,23 @@ import FormPage from './Pages/FormPage.jsx'
 // import HomePage from './Pages/HomePage.jsx'
 import WikiHomePage from './Pages/WikiHomePage.jsx'
 import WikiPage from './Pages/WikiPage.jsx'
-import LocalWikiPage from './Pages/LocalWikiPage.jsx'
+import WikiListPage from './Pages/WikiListPage.jsx'
 import WikiApiError from './components/WikiApiError.jsx'
-import { generationLoader, pageEditAction, pageEditLoader, pageLoader, unlockAction, uploadAction, wikiLoader } from './api/routeHandlers.js'
-import WikiEditPage from './Pages/WikiEditPage.jsx'
+import { importLoader, generationLoader, pageEditAction, pageEditLoader, pageLoader, unlockAction, uploadAction, wikiListLoader, wikiLoader } from './api/routeHandlers.js'
 import WikiPageEditPage from './Pages/WikiPageEditPage.jsx'
-import WikiImportPage from './Pages/WikiImportPage.jsx'
 
 export const routes = [{
   element: <App />,
   hydrateFallbackElement: <PageLayout><main id="main" className="container form-page" role="status">불러오는 중입니다…</main></PageLayout>,
   children: [
     // { path: '/', element: <HomePage /> },
-    { path: '/', element: <WikiImportPage />, action: uploadAction },
-    { path: '/form', element: <FormPage />, action: uploadAction },
+    { path: '/', element: <FormPage />, loader: importLoader, action: uploadAction },
+    { path: '/form', element: <FormPage />, loader: importLoader, action: uploadAction },
+    { path: '/wikis', element: <WikiListPage />, loader: wikiListLoader, errorElement: <WikiApiError /> },
     { path: '/wiki/:wikiId', element: <WikiHomePage />, loader: wikiLoader, action: unlockAction, errorElement: <WikiApiError /> },
     { path: '/wiki/:wikiId/generations/:jobId', element: <GenerationPage />, loader: generationLoader, action: unlockAction, errorElement: <WikiApiError /> },
-    { path: '/wiki/:wikiId/import', element: <WikiImportPage />, action: uploadAction },
+    { path: '/wiki/:wikiId/import', element: <FormPage />, loader: importLoader, action: uploadAction },
     { path: '/wiki/:wikiId/pages/:pagesId', element: <WikiPage />, loader: pageLoader, action: unlockAction, errorElement: <WikiApiError /> },
-    { path: '/wiki/:wikiId/preview', element: <LocalWikiPage /> },
-    { path: '/wiki/:wikiId/preview/edit', element: <WikiEditPage /> },
     { path: '/wiki/:wikiId/pages/:pagesId/edit', element: <WikiPageEditPage />, loader: pageEditLoader, action: pageEditAction, errorElement: <WikiApiError /> },
     { path: '*', element: (
       <main id="main" className="container form-page">

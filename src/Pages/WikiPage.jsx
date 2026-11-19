@@ -21,7 +21,6 @@ export default function WikiPage() {
           <div className="sidebar-box">
             <h2>문서 도구</h2>
             <p><Link to={wikiPath(wikiId)}>위키 홈</Link></p>
-            <p><Link to={`${wikiPath(wikiId)}/preview`}>브라우저 문서 미리보기</Link></p>
             <p><Link to="/form">새 대화 올리기</Link></p>
           </div>
           <Link className="back-home" to="/">← 홈으로 돌아가기</Link>

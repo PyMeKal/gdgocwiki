@@ -1,8 +1,18 @@
-import { createPage, generatePages, getGeneration, createWiki, getPage, getPages, getWiki, unlockWiki, updatePage, uploadChat } from './wikis.js'
+import { createPage, generatePages, getGeneration, getWikis, createWiki, getPage, getPages, getWiki, unlockWiki, updatePage, uploadChat } from './wikis.js'
 import { readChatFile } from '../utils/readChatFile.js'
 import { redirect } from 'react-router'
 import { wikiPagePath, wikiPath } from '../utils/paths.js'
 import { getPageSection, parseWikiData } from '../utils/importWiki.js'
+import { getRecentWikiIds } from '../utils/recentWikis.js'
+
+export const wikiListLoader = () => getWikis()
+
+export async function importLoader({ params }) {
+  // shortcut: 이 브라우저에서 생성·조회한 위키만 기억합니다. 전체 목록 API가 생기면 교체합니다.
+  const ids = [...new Set([params.wikiId, ...getRecentWikiIds()].filter(Boolean))]
+  const wikis = await Promise.all(ids.map((id) => getWiki(id).catch(() => null)))
+  return { wikis: wikis.filter(Boolean) }
+}
 
 export async function uploadAction({ request }) {
   const form = await request.formData()

@@ -76,6 +76,10 @@ function completeGeneration(wiki, job) {
 }
 
 export const handlers = [
+  // GET /wikis — 현재 세션에서 접근 가능한 위키 전체 조회
+  http.get(root, resolve(({ cookies }) => HttpResponse.json({
+    wikis: db.wikis.filter((wiki) => !wiki.password || db.sessions[cookies[cookieName(wiki.id)]] === wiki.id).map(wikiData),
+  }))),
   // POST /wikis — 위키 생성
   http.post(root, resolve(async ({ request }) => {
     const body = await json(request)

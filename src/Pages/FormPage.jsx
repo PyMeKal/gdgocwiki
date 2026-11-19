@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Link, useFetcher } from 'react-router'
+import { Link, useFetcher, useLoaderData } from 'react-router'
 import ChatFileUpload from '../components/ChatFileUpload.jsx'
-import Notice from '../components/Notice.jsx'
 import { wikiPath } from '../utils/paths.js'
 
-export default function FormPage({ children }) {
+export default function FormPage() {
+  const { wikis } = useLoaderData()
   const [chat, setChat] = useState(null)
   const fetcher = useFetcher()
   const busy = fetcher.state !== 'idle'
@@ -39,12 +39,11 @@ export default function FormPage({ children }) {
             <input id="wiki-title" name="title" type="text" placeholder="예: 2026년 부산 여행" maxLength="100" required readOnly={busy || Boolean(fetcher.data?.wiki)} />
           </div>
           <details className="import-options"><summary>위키 비밀번호 (선택)</summary><div className="field">
-            <label htmlFor="wiki-password">위키 비밀번호 (선택)</label>
+            <label className="sr-only" htmlFor="wiki-password">위키 비밀번호 (선택)</label>
             <input id="wiki-password" name="password" type="password" autoComplete="new-password" aria-describedby="password-help" readOnly={busy || Boolean(fetcher.data?.wiki)} />
             <p id="password-help" className="muted small">설정하면 인증한 브라우저에서만 위키를 열 수 있습니다. 비워두면 비밀번호 없이 열립니다.</p>
           </div>
           </details>
-          <p className="muted small"><a href="/examples/kakao-chat.txt" download>실험용 대화 파일 다운로드</a></p>
 
           {chat && (
             <section className="chat-preview" aria-labelledby="preview-title">
@@ -53,7 +52,6 @@ export default function FormPage({ children }) {
               <pre>{chat.text.slice(0, 2000)}</pre>
             </section>
           )}
-          <Notice>위키를 생성하면 선택한 대화 파일을 서버로 전송합니다.</Notice>
           {fetcher.data?.error && <p className="upload-error" role="alert">{fetcher.data.error}</p>}
           <div className="actions">
             <button className="button primary" type="submit" disabled={busy || !chat}>{busy ? '업로드 중…' : 'Generate my wiki'}<img src="/design/generate.svg" alt="" /></button>
@@ -61,11 +59,10 @@ export default function FormPage({ children }) {
         </form>
 
         <p className="privacy-note"><img src="/design/lock.svg" alt="" />업로드 전 대화 참여자의 동의를 확인해주세요.</p>
-        <section className="recent-wiki">
+        {wikis.length > 0 && <section className="recent-wiki">
           <h2>Pick up where you left off</h2>
-          <Link className="recent-wiki-card" to={wikiPath()}><span className="recent-wiki-icon"><img src="/design/recent.svg" alt="" /></span><span><strong>예시 위키 보기</strong><small>대화로 만든 문서를 살펴보세요.</small></span><img src="/design/recentArrow.svg" alt="" /></Link>
-        </section>
-        {children}
+          {wikis.map((wiki) => <Link key={wiki.id} className="recent-wiki-card" to={wikiPath(wiki.id)}><span className="recent-wiki-icon"><img src="/design/recent.svg" alt="" /></span><span><strong>{wiki.name}</strong><small>대화로 만든 문서를 살펴보세요.</small></span><img src="/design/recentArrow.svg" alt="" /></Link>)}
+        </section>}
         <aside className="help-box" aria-labelledby="help-title">
           <h2 id="help-title">대화 파일은 어떻게 준비하나요?</h2>
           <ol>

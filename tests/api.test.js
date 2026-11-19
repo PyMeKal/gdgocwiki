@@ -39,6 +39,26 @@ async function send(path, { method = 'GET', body, cookie } = {}) {
   })
 }
 
+test('wiki list includes public and authenticated private wikis without exposing secrets', async () => {
+  const publicWiki = await api.createWiki({ name: '공개 위키' })
+  assert.deepEqual((await api.getWikis()).wikis.map((wiki) => wiki.id), [publicWiki.id])
+  const unlocked = await send(`/wikis/${DEMO_WIKI_ID}/unlock`, { method: 'POST', body: { password: '1234' } })
+  const cookie = unlocked.headers.get('set-cookie').split(';')[0]
+  const { wikis } = await (await send('/wikis', { cookie })).json()
+  assert.deepEqual(wikis.map((wiki) => wiki.id), [DEMO_WIKI_ID, publicWiki.id])
+  assert.equal(wikis[0].hasPassword, true)
+  assert.ok(wikis.every((wiki) => !Object.hasOwn(wiki, 'password')))
+  db.sessions = {}
+  assert.deepEqual((await (await send('/wikis', { cookie })).json()).wikis.map((wiki) => wiki.id), [publicWiki.id])
+})
+
+test('wiki list rejects malformed responses', async () => {
+  for (const data of [null, {}, { wikis: [null] }, { wikis: [{ id: 'a', name: '', hasPassword: false }] }, { wikis: [{ id: 'a', name: '위키' }] }, { wikis: Array(2).fill({ id: 'a', name: '위키', hasPassword: false }) }]) {
+    server.use(http.get('http://localhost/wikis', () => HttpResponse.json(data)))
+    await assert.rejects(api.getWikis(), /위키 목록 응답이 올바르지 않습니다/)
+  }
+})
+
 const errorIs = (status, code) => (error) => error.status === status && error.code === code
 
 test('wiki creation, retrieval and settings use the documented JSON contract', async () => {

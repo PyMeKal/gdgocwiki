@@ -1,6 +1,6 @@
 # 대화위키
 
-카카오톡 대화를 API로 업로드하고, URL의 위키·문서 ID로 API 데이터를 조회하는 React 서비스입니다. JSON 문서의 브라우저 저장·편집도 지원합니다.
+카카오톡 대화를 API로 업로드하고, URL의 위키·문서 ID로 API 데이터를 조회하는 React 서비스입니다.
 
 ## 구조
 
@@ -9,16 +9,14 @@
 - `src/utils/readChatFile.js`: 파일 크기·확장자·내용 검사와 텍스트 읽기
 - `src/Pages/HomePage.jsx`: 서비스 소개와 페이지 이동
 - `src/Pages/FormPage.jsx`: 위키 제목 입력, 카카오톡 `.txt` 미리보기와 POST 업로드
+- `src/Pages/WikiListPage.jsx`: 접근 가능한 위키 전체 목록
+- `src/utils/wiki.js`: 공통 주석 처리
 - `src/Pages/WikiHomePage.jsx`, `src/Pages/WikiPage.jsx`: URL의 ID로 위키·문서 목록·문서 본문을 GET하여 표시
-- `src/Pages/LocalWikiPage.jsx`: 브라우저에 저장된 JSON 문서 미리보기
 - `src/api/routeHandlers.js`, `src/components/WikiApiError.jsx`: 업로드 action, 조회 loader, 비밀번호 인증과 오류·재시도
-- `src/Pages/WikiEditPage.jsx`: 제목·소개·목차·본문·표·목록·주석 편집, 목차 추가·삭제·순서 변경
-- `src/Pages/WikiImportPage.jsx`: JSON 파일·직접 입력, 검증 결과, 공통 문서 미리보기와 저장
 - `src/components/WikiDocument.jsx`: 제목, 계층형 목차·본문, Infobox, 주석·참고 자료를 조립하는 공통 렌더러
 - `src/components/WikiInfobox.jsx`, `src/components/WikiImage.jsx`: 주요 정보 표와 이미지
 - `src/components/Footnote.jsx`: 본문 주석 번호 링크와 마우스·키보드 포커스 툴팁, 스크린 리더용 주석 연결
 - `src/components/WikiContent.jsx`: 본문·표·목록 및 주석 표시
-- `src/data/wiki.js`, `src/utils/wiki.js`: 기본 위키 데이터, 데이터 검사·브라우저 저장·주석 처리
 - `src/utils/wikiSchema.js`: 내부 데이터 검증과 URL 허용 정책
 - `src/utils/importWiki.js`: API·JSON의 title/category/content 검사와 ## 제목 기반 WikiDocument 변환
 - `public/examples/wiki.json`: API와 같은 title/category/content 입력 예시
@@ -40,23 +38,22 @@ React Router의 `Link`·`NavLink`로 전체 새로고침 없이 이동하며 뒤
 | --- | --- |
 | 홈 | `/` |
 | 대화 올리기 | `/form` |
+| 내 위키 목록 | `/wikis` |
 | 위키 홈·문서 목록 | `/wiki/:wikiId` |
 | 위키 문서 | `/wiki/:wikiId/pages/:pagesId` |
 | 문서 편집 | `/wiki/:wikiId/pages/:pagesId/edit` |
 | 섹션 편집 | `/wiki/:wikiId/pages/:pagesId/edit?section=section-1` |
-| 브라우저 문서 편집 | `/wiki/:wikiId/preview/edit` |
 | 문서 제작 대기·완료 | `/wiki/:wikiId/generations/:jobId` |
-| JSON 입력 | `/wiki/:wikiId/import` |
-| 브라우저 문서 미리보기 | `/wiki/:wikiId/preview` |
+| 대화 추가 | `/wiki/:wikiId/import` |
 
 예시 위키 ID는 `550e8400-e29b-41d4-a716-446655440000`, 문서 ID는 `page_001`입니다. 경로는 `src/utils/paths.js`에서 구성하며 문서 조회·편집·돌아가기 링크는 현재 URL의 ID를 유지합니다.
+`My wikis`는 `/wikis`에서 `GET /wikis`의 `{ wikis: [{ id, name, hasPassword, createdAt }] }` 응답 전체를 표시합니다. 실제 서버에도 이 API가 필요하며, 서버가 현재 사용자의 권한에 따라 필터링해야 합니다. MSW는 공개 위키와 현재 쿠키 세션으로 인증한 비공개 위키를 반환합니다.
 위키 홈은 `GET /wikis/:wikiId`와 `GET /wikis/:wikiId/pages`, 문서 화면은 `GET /wikis/:wikiId`와 `GET /wikis/:wikiId/pages/:pagesId`를 호출합니다. 목록의 문서를 누르면 응답의 문서 ID로 이동합니다. 로딩, 빈 목록, 404·네트워크 오류와 재시도를 표시하며 로컬 예시 데이터로 대체하지 않습니다.
 비밀번호가 필요한 위키는 인증 폼을 표시하고 `POST /wikis/:wikiId/unlock` 성공 후 다시 조회합니다. 기본 MSW 예시 위키의 비밀번호는 `1234`입니다.
 생성 폼의 선택 항목인 **위키 비밀번호**를 입력하면 보호된 위키를 생성합니다. 생성 직후에는 입력한 비밀번호로 인증하여 업로드와 문서 생성을 진행하며, 인증되지 않은 브라우저에서는 위키·문서·편집·생성 작업 화면에 접속할 때 비밀번호를 요구합니다. 비워두면 공개 위키를 생성합니다.
 문서 응답의 `title`, `category`, `content`를 `WikiDocument` 형식으로 변환합니다. `content`에서 줄 처음의 `##개요`·`## 개요`를 섹션 제목으로 읽고, 다음 `##` 전까지의 내용을 해당 섹션의 본문으로 표시합니다. 목차·섹션 번호·링크는 기존 렌더러가 생성합니다.
 API 문서 제목 옆 **편집** 버튼은 전체 본문을, 각 섹션 옆 **편집** 버튼은 해당 섹션만 편집합니다. 섹션 제목은 `## 제목` 형식입니다. **편집 완료** 시 `PATCH /wikis/:wikiId/pages/:pageId`에 `{ content, version }`을 전송하고 원래 문서로 돌아갑니다. 저장 실패·버전 충돌 시 입력은 유지됩니다.
 
-JSON 저장·브라우저 문서 편집기는 현재 브라우저의 문서 하나를 사용합니다. 해당 결과는 `/wiki/:wikiId/preview`에서 확인하고, 이 미리보기의 **위키 수정** 버튼으로 브라우저 문서 편집기를 엽니다.
 기존 `?page=...` 주소는 사용하지 않습니다.
 Vite 개발·preview 서버는 위 주소를 직접 열거나 새로고침할 수 있습니다. 배포 서버에서도 `/wiki/...` 등 파일이 없는 화면 경로를 `index.html`로 보내는 SPA fallback 설정이 필요하며, 정적 파일과 실제 API 경로는 그대로 제공해야 합니다. 자산 경로는 루트(`/`) 기준입니다.
 기존 개별 HTML 페이지는 사용하지 않습니다.
@@ -70,19 +67,9 @@ npm run preview
 
 배포용 파일은 `dist/`에 생성됩니다. `index.html`을 직접 여는 대신 개발·미리보기 서버를 사용해주세요.
 
-브라우저 문서 미리보기의 **위키 수정** 버튼으로 편집 페이지를 열 수 있습니다. 문서 제목·소개와 모든 목차 제목·본문·목록·표 셀을 수정할 수 있습니다.
-본문·목록·표 셀에 `[* 주석 내용]`을 입력하면 문서 전체에서 순서대로 번호가 붙고, 번호에 마우스를 올리거나 키보드로 포커스하면 주석 툴팁이 바로 표시됩니다. 툴팁은 표 안에서도 잘리지 않으며, Escape 키로 닫을 수 있습니다. 번호를 누르면 하단 주석으로, 하단 번호를 누르면 본문으로 이동합니다.
-편집 화면에서 이 구문의 내용을 바꾸거나 지우면 주석도 수정·삭제됩니다. 저장 후 **위키로 돌아가기**로 결과를 확인하세요.
-저장하지 않고 앱 안에서 이동하면 확인 창을 표시하고, 새로고침·탭 닫기는 브라우저의 이탈 경고를 사용합니다. 저장 실패 시 편집 내용을 유지하고 오류를 표시합니다.
-현재 위키 하나를 `localStorage`에 저장하므로 같은 브라우저에서 새로고침해도 수정 사항이 유지됩니다. 기존에 저장한 예시 위키도 그대로 불러올 수 있습니다.
-다른 브라우저·기기와 공유되지 않으며 브라우저 사이트 데이터를 지우면 사라집니다.
+## 문서 데이터와 주석
 
-## JSON으로 위키 생성
-
-1. JSON 입력 화면은 `/wiki/:wikiId/import` 주소로 직접 엽니다. API 테스트를 위해 화면의 **JSON으로 위키 만들기** 버튼·링크는 제거했습니다.
-2. 5MB 이하의 `.json` 파일을 선택하거나 JSON을 직접 입력한 뒤 미리보기를 누릅니다.
-3. 경고와 미리보기를 확인한 뒤 **현재 위키로 저장**을 누릅니다. 저장 전까지 현재 위키는 바뀌지 않습니다.
-4. **생성된 위키 보기**로 이동합니다. 저장은 현재 브라우저의 위키를 교체합니다. 기존 문서를 보관하려면 편집 화면의 **JSON으로 전체 문서 편집**에서 먼저 JSON을 복사해주세요.
+본문에 `[* 주석 내용]`을 입력하면 순서대로 번호가 붙고, 마우스·키보드로 주석 툴팁을 확인할 수 있습니다.
 
 제목·본문·정보 항목은 입력 데이터에서만 가져옵니다. 여행 분류나 문서 안내 등 예시 데이터는 가져온 문서에 덧붙이지 않습니다.
 문자열은 공백·줄바꿈·HTML 모양의 텍스트를 그대로 보존하며, HTML을 실행하지 않습니다.
@@ -90,7 +77,7 @@ npm run preview
 
 ### JSON 구조
 
-전체 예시는 [public/examples/wiki.json](public/examples/wiki.json)을 참고하세요. API 응답과 파일 입력은 같은 변환 함수를 사용합니다.
+전체 예시는 [public/examples/wiki.json](public/examples/wiki.json)을 참고하세요. API 응답은 기존 변환 함수로 검증합니다.
 
 ```json
 {
@@ -113,15 +100,11 @@ npm run preview
 - 외부 입력의 `description`, `sections`, `infobox`, `footnotes`, `references`는 현재 사용하지 않습니다. 기존 변환 코드는 `importWiki.js`에 주석 처리해 두었습니다.
 - 일반 Markdown의 목록·표·이미지·강조 서식은 변환하지 않고 원문으로 표시합니다. 기존 `[* 직접 주석]` 처리는 유지합니다.
 
-기존 브라우저 문서는 원래 내부 구조로 저장·렌더링합니다. 편집기의 **JSON으로 전체 문서 편집**도 해당 내부 구조를 검증하며, API 형식의 JSON은 **JSON 입력** 화면에서 가져옵니다.
-
 ### 오류 처리와 보안
 
-- JSON 문법·최상위 객체·필드 형식 오류는 화면에 안내하며 기존 저장 문서를 유지합니다.
+- API 응답의 JSON·필드 형식 오류는 화면에 안내합니다.
 - 파일·JSON 입력과 API 본문은 최대 5MB, 섹션은 최대 1,000개까지 지원합니다. 초과하면 본문을 임의로 잘라 저장하지 않고 오류를 표시합니다.
 - React 텍스트 렌더링을 사용하며 제목·분류·본문의 HTML을 실행하지 않습니다.
-- 기존 브라우저 문서의 이미지·링크·주석·참고 자료는 기존 URL 허용 정책과 내부 구조 검증을 유지합니다.
-- 브라우저 저장 공간·권한 문제로 저장하지 못하면 오류와 입력 내용·미리보기를 유지합니다.
 
 ## 대화 업로드
 
@@ -159,6 +142,7 @@ MSW는 개발 모드에서만 실행되며 `npm run build`·`npm run preview`에
 
 | Method | 경로 | 호출 함수 |
 | --- | --- | --- |
+| GET | `/wikis` | `getWikis()` |
 | POST | `/wikis` | `createWiki({ name, password? })` |
 | GET | `/wikis/:wikiId` | `getWiki(wikiId)` |
 | PATCH | `/wikis/:wikiId` | `updateWiki(wikiId, { name?, password? })` |

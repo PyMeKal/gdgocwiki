@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { getPageSection, parseWikiData, parseWikiJson, readWikiJson } from '../src/utils/importWiki.js'
-import { loadWiki, prepareWiki, saveWiki, validateWiki } from '../src/utils/wiki.js'
+import { getPageSection, parseWikiData } from '../src/utils/importWiki.js'
+import { prepareWiki, validateWiki } from '../src/utils/wiki.js'
 import { isSafeUrl } from '../src/utils/wikiSchema.js'
 
 const page = (content, extra = {}) => ({ title: '문서', category: 'EVENT', content, ...extra })
@@ -10,9 +10,8 @@ const page = (content, extra = {}) => ({ title: '문서', category: 'EVENT', con
 test('API JSON becomes a WikiDocument with numbered sections and category', async () => {
   const text = await readFile(new URL('../public/examples/wiki.json', import.meta.url), 'utf8')
   const raw = JSON.parse(text)
-  const { wiki, warnings } = parseWikiJson(text)
+  const { wiki, warnings } = parseWikiData(raw)
   assert.deepEqual(warnings, [])
-  assert.deepEqual(parseWikiData(raw).wiki, wiki)
   assert.equal(wiki.title, raw.title)
   assert.equal(wiki.category, raw.category)
   assert.deepEqual(wiki.sections.map(({ title }) => title), ['개요', '일정', '참고'])
@@ -81,34 +80,4 @@ test('rejects unsafe protocols and validates stored image, link, infobox and sou
     { sections: [{ id: 'footnote-1', title: '충돌', blocks: [] }] },
     { sections: [{ id: 'image', title: '이미지', blocks: [{ type: 'image', src: 'javascript:bad', alt: '', caption: '' }] }] },
   ]) assert.throws(() => validateWiki({ ...wiki, ...patch }))
-})
-
-test('JSON file and pasted input validation report syntax, file and read errors', async () => {
-  for (const text of ['', '{broken', '[]', 'null', '{}', '{"title":3}']) assert.throws(() => parseWikiJson(text))
-  assert.equal(parseWikiJson('\uFEFF{"title":"BOM","content":""}').wiki.title, 'BOM')
-  assert.throws(() => parseWikiJson(' '.repeat(5 * 1024 * 1024 + 1)), /5MB/)
-  const parsed = await readWikiJson(new File([JSON.stringify(page('##개요\n본문'))], 'wiki.JSON'))
-  assert.equal(parsed.wiki.sections[0].blocks[0].text, '본문')
-  await assert.rejects(readWikiJson(new File(['{}'], 'wiki.txt')), /\.json/)
-  await assert.rejects(readWikiJson({ name: 'large.json', size: 5 * 1024 * 1024 + 1, text: () => assert.fail('must not read') }), /5MB/)
-  await assert.rejects(readWikiJson({ name: 'broken.json', size: 3, text: async () => { throw new Error('denied') } }), /읽지 못했습니다/)
-})
-
-test('converted content and category survive save/load and invalid data preserves the saved document', () => {
-  const originalWindow = globalThis.window
-  const values = new Map()
-  try {
-    globalThis.window = { localStorage: { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) } }
-    const { wiki } = parseWikiData(page('##개요\n본문[* 직접 주석]\n##다음\n다음 본문'))
-    saveWiki(wiki)
-    assert.deepEqual(loadWiki().wiki, wiki)
-    assert.equal(prepareWiki(wiki).footnotes[0].content, '직접 주석')
-    assert.throws(() => parseWikiJson('{bad'))
-    assert.deepEqual(loadWiki().wiki, wiki)
-    assert.throws(() => saveWiki({ ...wiki, references: [{ url: 'javascript:bad', label: 'bad' }] }))
-    assert.deepEqual(loadWiki().wiki, wiki)
-  } finally {
-    if (originalWindow === undefined) delete globalThis.window
-    else globalThis.window = originalWindow
-  }
 })

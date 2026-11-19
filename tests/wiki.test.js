@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { defaultWiki } from '../src/data/wiki.js'
-import { loadWiki, prepareWiki, saveWiki, validateWiki } from '../src/utils/wiki.js'
+import { defaultWiki } from './fixtures/wiki.js'
+import { prepareWiki, validateWiki } from '../src/utils/wiki.js'
 
 test('footnotes are numbered in reading order across paragraphs, lists and table cells', () => {
   const wiki = { sections: [{ id: 'example', title: '제목', blocks: [
@@ -41,41 +41,4 @@ test('validates titles, unique section anchors and editable block shapes', () =>
     ].map((section) => ({ ...defaultWiki, sections: [section] })),
   ]
   for (const wiki of invalid) assert.throws(() => validateWiki(wiki))
-})
-
-test('edits persist across loads, bad storage falls back and failed saves report errors', () => {
-  const originalWindow = globalThis.window
-  const values = new Map()
-  try {
-    globalThis.window = { localStorage: {
-      getItem: (key) => values.get(key) ?? null,
-      setItem: (key, value) => values.set(key, value),
-    } }
-    assert.deepEqual(loadWiki(), { wiki: defaultWiki, error: '' })
-    const edited = structuredClone(defaultWiki)
-    edited.title = '수정한 여행'
-    edited.sections.reverse()
-    edited.sections[0].title = '변경한 목차'
-    edited.sections[0].blocks[0].items[0] = '수정한 내용[* 수정한 주석]'
-    saveWiki(edited)
-    assert.deepEqual(loadWiki(), { wiki: edited, error: '' })
-
-    const stored = [...values.values()][0]
-    assert.throws(() => saveWiki({ ...edited, title: ' ' }))
-    assert.equal([...values.values()][0], stored)
-
-    for (const value of ['{invalid', '{}']) {
-      globalThis.window.localStorage.getItem = () => value
-      const loaded = loadWiki()
-      assert.equal(loaded.wiki, defaultWiki)
-      assert.match(loaded.error, /불러오지 못해/)
-    }
-    globalThis.window.localStorage.getItem = () => { throw new Error('denied') }
-    globalThis.window.localStorage.setItem = () => { throw new Error('quota') }
-    assert.match(loadWiki().error, /불러오지 못해/)
-    assert.throws(() => saveWiki(edited), /입력한 내용은 이 화면에 남아/)
-  } finally {
-    if (originalWindow === undefined) delete globalThis.window
-    else globalThis.window = originalWindow
-  }
 })

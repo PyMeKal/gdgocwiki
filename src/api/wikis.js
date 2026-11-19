@@ -1,3 +1,5 @@
+import { rememberWiki } from '../utils/recentWikis.js'
+
 export const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
 async function request(path, { method = 'GET', body } = {}) {
@@ -22,8 +24,19 @@ async function request(path, { method = 'GET', body } = {}) {
 const wikiPath = (wikiId) => `/wikis/${encodeURIComponent(wikiId)}`
 const pagePath = (wikiId, pageId) => `${wikiPath(wikiId)}/pages/${encodeURIComponent(pageId)}`
 
-export const createWiki = (data) => request('/wikis', { method: 'POST', body: data })
-export const getWiki = (wikiId) => request(wikiPath(wikiId))
+export async function getWikis() {
+  const data = await request('/wikis')
+  if (!Array.isArray(data?.wikis) || data.wikis.some((wiki) =>
+    !wiki || typeof wiki.id !== 'string' || !wiki.id.trim() ||
+    typeof wiki.name !== 'string' || !wiki.name.trim() || typeof wiki.hasPassword !== 'boolean'
+  ) || new Set(data.wikis.map((wiki) => wiki.id)).size !== data.wikis.length) {
+    throw new Error('위키 목록 응답이 올바르지 않습니다.')
+  }
+  return data
+}
+
+export const createWiki = (data) => request('/wikis', { method: 'POST', body: data }).then(rememberWiki)
+export const getWiki = (wikiId) => request(wikiPath(wikiId)).then(rememberWiki)
 export const updateWiki = (wikiId, data) => request(wikiPath(wikiId), { method: 'PATCH', body: data })
 export const unlockWiki = (wikiId, password) => request(`${wikiPath(wikiId)}/unlock`, {
   method: 'POST', body: { password },

@@ -1,32 +1,4 @@
-import { defaultWiki } from '../data/wiki.js'
-import { validateWiki } from './wikiSchema.js'
-
-const storageKey = 'conversation-wiki:busan:v1'
-
 export { validateWiki } from './wikiSchema.js'
-
-export function loadWiki() {
-  try {
-    // shortcut: 위키 하나를 이 브라우저에 저장하며, 여러 문서·공동 편집을 지원할 때 API로 교체합니다.
-    const saved = window.localStorage.getItem(storageKey)
-    if (saved === null) return { wiki: defaultWiki, error: '' }
-    const wiki = JSON.parse(saved)
-    validateWiki(wiki)
-    return { wiki, error: '' }
-  } catch {
-    return { wiki: defaultWiki, error: '저장된 문서를 불러오지 못해 기본 예시를 표시합니다. 브라우저 저장 설정이나 저장된 데이터를 확인해주세요.' }
-  }
-}
-
-export function saveWiki(wiki) {
-  // 잘못된 편집 결과가 기존 저장 문서를 덮어쓰지 않도록 저장 전에 검사합니다.
-  validateWiki(wiki)
-  try {
-    window.localStorage.setItem(storageKey, JSON.stringify(wiki))
-  } catch {
-    throw new Error('문서를 저장하지 못했습니다. 브라우저 저장 공간과 설정을 확인해주세요. 입력한 내용은 이 화면에 남아 있습니다.')
-  }
-}
 
 // 저장 원본은 유지하고, 화면에 필요한 섹션 번호와 주석 참조 정보를 별도 객체에 구성합니다.
 export function prepareWiki(wiki) {
