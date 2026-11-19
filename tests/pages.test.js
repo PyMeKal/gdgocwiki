@@ -163,20 +163,17 @@ test('pages render with shared navigation and valid section links', async (t) =>
       })
     }
 
-    await t.test('wiki list shows all accessible wikis without visit history and handles empty and failed responses', async () => {
-      globalThis.window = { localStorage: { getItem: () => null } }
+    await t.test('wiki list uses remembered IDs without requesting a list endpoint', async () => {
+      const values = new Map()
+      globalThis.window = { localStorage: { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) } }
+      assert.match(await renderPage('/wikis'), /아직 접근할 수 있는 위키가 없습니다/)
+      await renderPage(wikiPath())
+      await renderPage('/wiki/team-42')
       const html = await renderPage('/wikis')
       assert.ok(html.includes(`href="${wikiPath()}"`))
       assert.match(html, /href="\/wiki\/team-42"/)
-      assert.doesNotMatch(html, /\/preview/)
       assert.match(html, /aria-current="page" href="\/wikis"/)
-      api.use(http.get('http://localhost/wikis', () => HttpResponse.json({ wikis: [] })))
-      assert.match(await renderPage('/wikis'), /아직 접근할 수 있는 위키가 없습니다/)
-      api.use(http.get('http://localhost/wikis', () => HttpResponse.json({ message: '목록 조회 실패' }, { status: 500 })))
-      const failed = await renderPage('/wikis')
-      assert.match(failed, /목록 조회 실패/)
-      assert.match(failed, /다시 시도/)
-      api.resetHandlers()
+      assert.ok(!requests.includes('GET /wikis'))
     })
 
     await t.test('import page shows only previously visited wikis that are still accessible', async () => {

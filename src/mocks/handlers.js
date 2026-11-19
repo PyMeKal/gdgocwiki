@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse, passthrough } from 'msw'
 import { API_BASE_URL } from '../api/wikis.js'
 import { readChatFile } from '../utils/readChatFile.js'
 import { convertChat } from './convertChat.js'
@@ -32,6 +32,8 @@ async function json(request) {
 
 function resolve(handler, { unlock = false } = {}) {
   return async (context) => {
+    // 화면과 API가 같은 경로여도 페이지 이동에는 HTML을 반환해야 합니다.
+    if (context.request.mode === 'navigate') return passthrough()
     try {
       return await withDb(async () => {
         const { params, cookies } = context
@@ -76,10 +78,6 @@ function completeGeneration(wiki, job) {
 }
 
 export const handlers = [
-  // GET /wikis — 현재 세션에서 접근 가능한 위키 전체 조회
-  http.get(root, resolve(({ cookies }) => HttpResponse.json({
-    wikis: db.wikis.filter((wiki) => !wiki.password || db.sessions[cookies[cookieName(wiki.id)]] === wiki.id).map(wikiData),
-  }))),
   // POST /wikis — 위키 생성
   http.post(root, resolve(async ({ request }) => {
     const body = await json(request)

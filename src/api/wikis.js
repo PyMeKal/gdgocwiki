@@ -1,4 +1,4 @@
-import { rememberWiki } from '../utils/recentWikis.js'
+import { getRecentWikiIds, rememberWiki } from '../utils/recentWikis.js'
 
 export const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
@@ -25,7 +25,8 @@ const wikiPath = (wikiId) => `/wikis/${encodeURIComponent(wikiId)}`
 const pagePath = (wikiId, pageId) => `${wikiPath(wikiId)}/pages/${encodeURIComponent(pageId)}`
 
 export async function getWikis() {
-  const data = await request('/wikis')
+  const results = await Promise.all(getRecentWikiIds().map((id) => getWiki(id).catch(() => null)))
+  const data = { wikis: results.filter(Boolean) }
   if (!Array.isArray(data?.wikis) || data.wikis.some((wiki) =>
     !wiki || typeof wiki.id !== 'string' || !wiki.id.trim() ||
     typeof wiki.name !== 'string' || !wiki.name.trim() || typeof wiki.hasPassword !== 'boolean'

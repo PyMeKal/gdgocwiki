@@ -15,7 +15,7 @@ export default function WikiListPage() {
           <div className="wiki-statistics"><div><strong>{wikis.length}</strong><span>accessible wikis</span></div></div>
         </section>
         <div className="section-heading"><h2>Your conversations, connected</h2><ButtonLink to="/" primary>새 위키 만들기</ButtonLink></div>
-        <p className="muted small">지금 접근할 수 있는 모든 위키를 모았어요.</p>
+        <p className="muted small">이 브라우저에서 생성하거나 방문한 위키 중 지금 접근할 수 있는 위키를 모았어요.</p>
         {wikis.length ? (
           <ul className="wiki-list">
             {wikis.map((wiki) => (

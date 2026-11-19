@@ -39,23 +39,36 @@ async function send(path, { method = 'GET', body, cookie } = {}) {
   })
 }
 
-test('wiki list includes public and authenticated private wikis without exposing secrets', async () => {
-  const publicWiki = await api.createWiki({ name: '공개 위키' })
-  assert.deepEqual((await api.getWikis()).wikis.map((wiki) => wiki.id), [publicWiki.id])
-  const unlocked = await send(`/wikis/${DEMO_WIKI_ID}/unlock`, { method: 'POST', body: { password: '1234' } })
-  const cookie = unlocked.headers.get('set-cookie').split(';')[0]
-  const { wikis } = await (await send('/wikis', { cookie })).json()
-  assert.deepEqual(wikis.map((wiki) => wiki.id), [DEMO_WIKI_ID, publicWiki.id])
-  assert.equal(wikis[0].hasPassword, true)
-  assert.ok(wikis.every((wiki) => !Object.hasOwn(wiki, 'password')))
-  db.sessions = {}
-  assert.deepEqual((await (await send('/wikis', { cookie })).json()).wikis.map((wiki) => wiki.id), [publicWiki.id])
+test('page navigation bypasses the wiki API while fetch requests still return JSON', async () => {
+  const before = structuredClone(db)
+  const request = new Request('http://localhost/wikis', { method: 'POST' })
+  // Request 생성자는 브라우저 전용 navigate 모드를 허용하지 않습니다.
+  Object.defineProperty(request, 'mode', { value: 'navigate' })
+  const result = await handlers[0].run({ request, requestId: 'wiki-list-navigation' })
+  assert.equal(result.response.headers.get('x-msw-intention'), 'passthrough')
+  assert.deepEqual(db, before)
+  const response = await send('/wikis', { method: 'POST', body: { name: '새 위키' } })
+  assert.equal(response.status, 201)
+  assert.match(response.headers.get('content-type'), /application\/json/)
+  assert.equal((await response.json()).name, '새 위키')
 })
 
-test('wiki list rejects malformed responses', async () => {
-  for (const data of [null, {}, { wikis: [null] }, { wikis: [{ id: 'a', name: '', hasPassword: false }] }, { wikis: [{ id: 'a', name: '위키' }] }, { wikis: Array(2).fill({ id: 'a', name: '위키', hasPassword: false }) }]) {
-    server.use(http.get('http://localhost/wikis', () => HttpResponse.json(data)))
-    await assert.rejects(api.getWikis(), /위키 목록 응답이 올바르지 않습니다/)
+test('wiki list fetches only remembered IDs and excludes inaccessible wikis', async () => {
+  const originalWindow = globalThis.window
+  const values = new Map()
+  globalThis.window = { localStorage: { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) } }
+  try {
+    assert.deepEqual(await api.getWikis(), { wikis: [] })
+    const wiki = await api.createWiki({ name: '공개 위키' })
+    values.set('conversation-wiki:recent-wikis:v1', JSON.stringify([wiki.id, DEMO_WIKI_ID, 'missing']))
+    const { wikis } = await api.getWikis()
+    assert.deepEqual(wikis.map((item) => item.id), [wiki.id])
+    assert.ok(wikis.every((item) => !Object.hasOwn(item, 'password')))
+    db.wikis.find((item) => item.id === wiki.id).password = 'locked'
+    assert.deepEqual(await api.getWikis(), { wikis: [] })
+  } finally {
+    if (originalWindow === undefined) delete globalThis.window
+    else globalThis.window = originalWindow
   }
 })
 
