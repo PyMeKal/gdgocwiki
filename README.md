@@ -47,9 +47,9 @@ React Router의 `Link`·`NavLink`로 전체 새로고침 없이 이동하며 뒤
 | 대화 추가 | `/wiki/:wikiId/import` |
 
 예시 위키 ID는 `550e8400-e29b-41d4-a716-446655440000`, 문서 ID는 `page_001`입니다. 경로는 `src/utils/paths.js`에서 구성하며 문서 조회·편집·돌아가기 링크는 현재 URL의 ID를 유지합니다.
-`My wikis`는 `/wikis`에서 `GET /wikis`의 `{ wikis: [{ id, name, hasPassword, createdAt }] }` 응답 전체를 표시합니다. 실제 서버에도 이 API가 필요하며, 서버가 현재 사용자의 권한에 따라 필터링해야 합니다. MSW는 공개 위키와 현재 쿠키 세션으로 인증한 비공개 위키를 반환합니다.
+`My wikis`는 이 브라우저에서 생성·방문한 위키 ID를 기록하고 각각 `GET /wikis/:wikiId`로 조회합니다. 인증이 풀리거나 삭제된 위키는 제외합니다. 전체 위키 목록 API는 없으므로 다른 브라우저에서만 방문한 위키는 표시할 수 없습니다.
 위키 홈은 `GET /wikis/:wikiId`와 `GET /wikis/:wikiId/pages`, 문서 화면은 `GET /wikis/:wikiId`와 `GET /wikis/:wikiId/pages/:pagesId`를 호출합니다. 목록의 문서를 누르면 응답의 문서 ID로 이동합니다. 로딩, 빈 목록, 404·네트워크 오류와 재시도를 표시하며 로컬 예시 데이터로 대체하지 않습니다.
-비밀번호가 필요한 위키는 인증 폼을 표시하고 `POST /wikis/:wikiId/unlock` 성공 후 다시 조회합니다. 기본 MSW 예시 위키의 비밀번호는 `1234`입니다.
+비밀번호가 필요한 위키는 인증 폼을 표시하고 `POST /wikis/:wikiId/unlock` 성공 후 다시 조회합니다.
 생성 폼의 선택 항목인 **위키 비밀번호**를 입력하면 보호된 위키를 생성합니다. 생성 직후에는 입력한 비밀번호로 인증하여 업로드와 문서 생성을 진행하며, 인증되지 않은 브라우저에서는 위키·문서·편집·생성 작업 화면에 접속할 때 비밀번호를 요구합니다. 비워두면 공개 위키를 생성합니다.
 문서 응답의 `title`, `category`, `content`를 `WikiDocument` 형식으로 변환합니다. `content`에서 줄 처음의 `##개요`·`## 개요`를 섹션 제목으로 읽고, 다음 `##` 전까지의 내용을 해당 섹션의 본문으로 표시합니다. 목차·섹션 번호·링크는 기존 렌더러가 생성합니다.
 API 문서 제목 옆 **편집** 버튼은 전체 본문을, 각 섹션 옆 **편집** 버튼은 해당 섹션만 편집합니다. 섹션 제목은 `## 제목` 형식입니다. **편집 완료** 시 `PATCH /wikis/:wikiId/pages/:pageId`에 `{ content, version }`을 전송하고 원래 문서로 돌아갑니다. 저장 실패·버전 충돌 시 입력은 유지됩니다.
@@ -111,38 +111,33 @@ npm run preview
 제목과 파일을 입력한 뒤 **위키 만들기**를 누르면 `POST /wikis`로 위키를 만들고, 반환된 ID로 `POST /wikis/:wikiId/chats`를 호출합니다. 파일 선택·드래그만으로는 전송하지 않습니다.
 원본 파일을 `FormData`의 `file` 필드로 전송하며, 처리 중 파일 변경·중복 제출을 막습니다. 업로드 후 `POST /wikis/:wikiId/generations`를 호출하고 대기 화면으로 자동 이동합니다. 화면은 1초마다 작업을 조회하고, JSON 변환과 문서 저장이 끝나면 **다 제작되었습니다!** 문구와 **위키로 이동** 버튼을 표시합니다.
 실패하면 입력을 유지하고 오류를 표시합니다. 위키 생성 후 파일 업로드만 실패한 경우 같은 ID로 재시도하여 위키를 중복 생성하지 않습니다. 새로고침하면 이 재시도 정보는 사라집니다.
-실행 순서는 **위키 생성 → 대화 업로드 → 생성 요청 → 상태 조회 → 페이지 생성**입니다. 업로드와 생성 요청에 wikiId가 필요하므로 `POST /wikis`는 먼저 호출합니다.
-
-실험용 [카톡 대화 파일](public/examples/kakao-chat.txt)을 다운로드해 업로드하세요. 화면에도 다운로드 링크가 있습니다. 예시에는 가상의 여행 대화와 문서 3개가 들어 있습니다.
-`src/mocks/convertChat.js`는 `[문서: 제목 | 분류]` 구간을 문서로 나누고 `[이름] [시간]`을 제거해 `{title, category, content}` JSON을 만듭니다. `##` 제목과 메시지는 그대로 보존합니다. 문서 구분이 없는 파일은 대화 기록 문서 하나로 변환합니다. 실제 AI나 일반 카카오톡 대화의 의미 분석은 수행하지 않습니다.
-
-MSW 작업은 요청 후 1초까지 `PENDING`, 약 6초까지 `PROCESSING`, 그 이후 조회에서 변환하여 `COMPLETED`가 됩니다. 조회 응답의 `pages`는 아직 저장 전인 JSON이며, 대기 화면의 loader가 기존 `createPage` 함수로 `POST /wikis/:wikiId/pages`를 호출합니다. 저장이 모두 끝나야 화면에서 완료를 알립니다.
-이 실험을 위해 mock 페이지 생성 요청은 `generationJobId`, `generationIndex`를 추가로 받습니다. 서버는 원본 작업과 내용의 일치를 확인하고 같은 작업·순번의 재요청을 재사용하므로 중복 문서를 만들지 않습니다. 실제 서버 연결 시 이 확장 계약을 맞춰야 합니다. 실제 API가 생성 작업에서 문서를 저장하고 `pages`를 반환하지 않는 경우에는 추가 저장 없이 완료를 표시합니다.
-생성 요청 실패 시 기존 위키·업로드 ID로 재시도하고, 페이지 저장 실패 시 대기 화면의 **다시 시도**로 이어서 저장합니다. MSW 가상 DB는 IndexedDB에 저장하므로 같은 origin에서 새로고침하거나 새 탭에서 URL을 열어도 작업·업로드·문서를 불러옵니다.
+실행 순서는 **위키 생성 → 대화 업로드 → 생성 요청 → 상태 조회**입니다. 서버와 AI 에이전트가 문서를 저장하며 프런트엔드는 상태만 조회합니다.
+작업이 실패하면 **대화 다시 올리기**로 재시도할 수 있습니다. AI 에이전트 연결 오류는 서버에서 해결해야 합니다.
 대화 올리기에서 10MB 이하의 `.txt` 파일 하나를 선택하거나 끌어다 놓으면 파일명과 대화의 처음 2,000자를 확인할 수 있습니다.
-UTF-8, BOM이 있는 UTF-16, EUC-KR 텍스트를 읽을 수 있습니다. 카카오톡 대화의 구조를 분석하는 기능은 아직 없습니다.
-미리보기는 페이지 메모리에서 보관하며 새로고침하거나 페이지를 이동하면 사라집니다. 업로드 버튼을 누르면 선택한 파일을 API로 전송합니다. 개발 모드의 MSW는 실제 서버 전송 없이 처리하고, MSW를 끄면 설정한 실제 API로 전송합니다.
+UTF-8, BOM이 있는 UTF-16, EUC-KR 텍스트를 읽을 수 있습니다. 실제 카카오톡 내보내기 형식인지는 서버에서 검증합니다.
+미리보기는 페이지 메모리에서 보관하며 새로고침하거나 페이지를 이동하면 사라집니다. 업로드 버튼을 눌러야 실제 서버로 전송합니다.
 
-## MSW mock API
+## 백엔드 API
 
-[Notion API 명세서](https://app.notion.com/p/API-413135db696280739469c40b0e438e43)의 API 상세·공통 오류 형식을 기준으로 13개 API를 구현했습니다. 서비스 개요는 구현 범위에 포함하지 않았습니다.
-대화 업로드와 위키·문서 조회 화면에서 아래 API 호출 함수를 사용합니다. 개발 모드에서는 같은 요청을 MSW가 가로챕니다. 편집·JSON 입력은 브라우저 저장 방식을 유지합니다.
+[Swagger 명세서](http://211.233.208.44/swagger/index.html#/)를 기준으로 `src/api/wikis.js`에서 API를 호출합니다. 백엔드 주소는 `http://211.233.208.44`입니다.
 
-`npm install` 후 `npm run dev`로 실행하면 MSW가 먼저 준비되고 앱이 열립니다. 비밀번호와 대화 본문을 콘솔에 남기지 않도록 MSW 요청 로그는 끕니다.
-MSW는 개발 모드에서만 실행되며 `npm run build`·`npm run preview`에서는 활성화되지 않습니다.
-`.env.example`의 값을 `.env.local`에 복사해 `VITE_ENABLE_MSW=false`로 설정하면 개발 중에도 끌 수 있습니다. 환경 변수를 바꾼 뒤 개발 서버를 다시 시작하세요.
-`VITE_API_BASE_URL`은 기본 빈 문자열로 같은 origin의 `/wikis`를 사용하며, 지정하면 호출 모듈과 MSW 모두 해당 주소를 사용합니다. 명세대로 기본 경로에 `/api`를 덧붙이지 않습니다.
+기본 API 경로는 `/api`입니다. `npm run dev` 및 `npm run preview`에서는 Vite 프록시가 `/api/wikis/...`를 백엔드의 `/wikis/...`로 전달합니다. 브라우저는 같은 origin으로 요청하므로 개발 중 CORS와 교차 사이트 쿠키 제한을 피할 수 있습니다. 쿠키는 `credentials: 'include'`로 전달하고 multipart의 Content-Type은 브라우저가 설정합니다.
 
-- `src/api/wikis.js`: `fetch` 기반 API 호출 함수. 쿠키를 포함하고, JSON을 반환하며 204 응답은 `undefined`를 반환합니다. 실패 시 `Error`의 `status`, `code`, `message`로 오류를 확인합니다.
-- `src/mocks/db.js`: 위키·대화·문서·작업의 상태와 요청 단위 복원·저장을 처리합니다. 브라우저에서는 IndexedDB, Node 테스트에서는 기본적으로 메모리를 사용합니다. 비밀번호와 내부 관계 필드는 응답에서 제외합니다. `resetDb()`는 테스트용 메모리 초기화이며 브라우저의 저장된 DB를 삭제하지 않습니다.
-- `src/mocks/storage.js`: IndexedDB의 스냅샷 저장과 Web Locks를 이용한 탭 간 요청 직렬화.
-- `src/mocks/handlers.js`: 요청 검사, 인증, 업로드, 생성 작업, 문서 CRUD.
-- `src/mocks/browser.js`, `public/mockServiceWorker.js`: 브라우저용 MSW 설정과 공식 CLI로 생성한 worker. MSW 업데이트 시 `npx msw init public --save`로 worker도 갱신하세요.
-- `tests/api.test.js`: 동일한 핸들러에 HTTP 요청을 보내는 통합 테스트. Node 22.12 이상이 필요합니다.
+배포 시에도 **화면과 같은 origin의 `/api`를 백엔드로 프록시**하고 `/api` 접두어를 제거해야 합니다. Vite 설정은 정적 배포 서버에 적용되지 않습니다. 예시 Nginx 설정은 다음과 같습니다.
+
+```nginx
+location /api/ {
+    proxy_pass http://211.233.208.44/;
+    proxy_set_header Host $proxy_host;
+}
+```
+
+`.env.example`의 `VITE_API_BASE_URL`로 API 주소를 바꿀 수 있으며 변경 후 서버 재시작·재빌드가 필요합니다. 외부 URL을 직접 지정하면 서버의 CORS·쿠키 정책이 이를 허용해야 하고, HTTPS 화면에서 HTTP API를 직접 호출하면 브라우저가 차단합니다.
+
+API 오류는 서버의 `message`, `status`, `code`를 유지합니다. 프록시가 JSON이 아닌 오류를 반환해도 HTTP 상태를 안내합니다. 테스트는 Node 내장 기능으로 fetch를 대체하여 요청·응답 처리와 라우팅을 검증하며 실제 서버 데이터를 변경하지 않습니다.
 
 | Method | 경로 | 호출 함수 |
 | --- | --- | --- |
-| GET | `/wikis` | `getWikis()` |
 | POST | `/wikis` | `createWiki({ name, password? })` |
 | GET | `/wikis/:wikiId` | `getWiki(wikiId)` |
 | PATCH | `/wikis/:wikiId` | `updateWiki(wikiId, { name?, password? })` |
@@ -157,50 +152,6 @@ MSW는 개발 모드에서만 실행되며 `npm run build`·`npm run preview`에
 | PATCH | `/wikis/:wikiId/pages/:pageId` | `updatePage(wikiId, pageId, { content, version })` |
 | DELETE | `/wikis/:wikiId/pages/:pageId` | `deletePage(wikiId, pageId)` |
 
-### 브라우저 콘솔에서 확인
+비밀번호가 있는 위키는 서버가 발급한 세션 쿠키로 접근합니다. 비밀번호 변경 시 기존 세션이 무효화됩니다. 문서 수정은 조회한 `version`을 보내며 충돌 시 입력을 유지합니다. AI 에이전트 전용 작업 상태 PATCH는 프런트엔드에서 호출하지 않습니다.
 
-개발 서버를 연 브라우저의 개발자 도구 콘솔에서 다음을 실행할 수 있습니다. 화면에서 사용하는 API를 직접 확인할 수 있습니다.
-
-```js
-const api = await import('/src/api/wikis.js')
-const wikiId = '550e8400-e29b-41d4-a716-446655440000'
-
-await api.unlockWiki(wikiId, '1234')
-await api.getWiki(wikiId)
-await api.getChats(wikiId) // chat_001
-await api.getPages(wikiId) // page_001, page_002, page_003
-await api.getPage(wikiId, 'page_001')
-
-const created = await api.createWiki({ name: '테스트 위키' })
-const page = await api.createPage(created.id, {
-  title: '테스트 문서', category: 'EVENT', content: '## 개요\n테스트 본문',
-})
-await api.updatePage(created.id, page.id, { content: '수정 본문', version: 1 })
-await api.getPage(created.id, page.id) // version: 2
-await api.deletePage(created.id, page.id)
-
-const chat = await api.uploadChat(created.id, new File(['첫 메시지\n두 번째 메시지'], 'chat.txt'))
-const job = await api.generatePages(created.id, { chatIds: [chat.id], mode: 'MERGE' })
-await api.getGeneration(created.id, job.jobId) // PENDING (약 6초 뒤 조회하면 COMPLETED와 pages 반환)
-// 대기 화면으로 이동하면 상태 조회와 페이지 POST 저장을 자동으로 진행합니다.
-// /wiki/{created.id}/generations/{job.jobId} 경로로 이동하세요.
-```
-
-직접 `fetch('/wikis/...')`로도 요청할 수 있습니다. JSON 요청에는 `Content-Type: application/json`과 `JSON.stringify(body)`를 사용하고, 업로드는 `FormData`의 `file` 필드를 사용하세요. `FormData`의 Content-Type은 브라우저가 boundary와 함께 설정하도록 두세요.
-외부 API 주소를 사용하는 경우 쿠키 요청에는 `credentials: 'include'`가 필요합니다.
-
-### mock 동작과 명세의 미정 항목
-
-- 가상 DB는 `conversation-wiki:mock-api` IndexedDB에 저장됩니다. 매 요청마다 최신 스냅샷을 읽고 성공 응답 전에 저장하며, 저장 실패 시 500과 오류 안내를 반환하고 변경을 되돌립니다. Web Locks로 여러 탭의 덮어쓰기를 막습니다. 기존 화면의 `localStorage` 문서에는 영향을 주지 않습니다.
-- 위키·페이지·업로드·작업과 개발용 인증 상태는 동일 브라우저·동일 origin에서 유지됩니다. `localhost`와 `127.0.0.1`, 서로 다른 포트·브라우저·기기는 저장소를 공유하지 않습니다. 사이트 데이터 삭제나 시크릿 모드 종료·브라우저의 저장소 정리로 데이터가 사라질 수 있습니다. 브라우저 저장소를 사용하는 개발용 모사이며 공용 백엔드는 아닙니다. 이미 이전 메모리 DB에서 사라진 위키는 복구할 수 없으므로 다시 생성해야 합니다. MSW는 `npm run dev`에서만 활성화되며 preview/배포에서는 실제 API가 필요합니다. MSW는 브라우저 요청을 가로채므로 터미널의 `curl`로 Vite에 요청하면 mock 응답을 받을 수 없습니다.
-- 일반 창에서 생성한 위키를 시크릿 창에서 열면, 시크릿 창의 별도 IndexedDB에는 해당 ID가 없으므로 `WIKI_NOT_FOUND`(404)가 반환됩니다. 비밀번호 미인증은 `WIKI_PASSWORD_REQUIRED`(401)입니다. 시크릿 창·다른 브라우저·기기에서도 같은 URL을 공유하려면 실제 공용 API/DB를 연결하고 MSW를 꺼야 합니다.
-- 비밀번호가 있는 위키는 `/unlock`을 제외한 해당 위키의 모든 API에서 인증을 검사합니다. 인증 전 401, 비밀번호 불일치는 403과 `WIKI_PASSWORD_INVALID`를 반환합니다. 비밀번호를 바꾸면 기존 세션을 무효화하며 `password: ''`는 비밀번호를 해제합니다.
-- 인증 성공 시 `Set-Cookie`로 위키별 세션을 모사합니다. HttpOnly 속성도 포함하지만 클라이언트에서 실행되는 MSW의 가상 쿠키이므로 실제 서버의 HttpOnly 보안을 제공하지 않습니다.
-- 생성 응답의 `url`은 화면 경로와 같은 요청 origin의 `/wiki/:wikiId` 형식입니다. 화면에서도 해당 ID로 위키·문서를 조회합니다. 위키 설정 수정의 200 응답 본문은 명세에 없어 위키 조회와 같은 필드를 반환하도록 정했습니다.
-- `.txt` 파일은 기존 파일 읽기 검사를 재사용합니다. 크기 한도가 명세에 없어 기존 화면과 같은 10MB로 정했습니다. 초과하면 413, 잘못된 파일·빈 파일은 400입니다. `messageCount`는 빈 줄을 제외한 줄 수이며 카카오톡 메시지 파싱 결과가 아닙니다.
-- AI 호출 대신 업로드한 텍스트를 예시 변환기로 처리합니다. 상태는 조회 횟수가 아닌 경과 시간으로 결정하며, 약 6초가 지난 뒤 GET 요청에서 변환합니다. 실제 백그라운드 워커는 실행하지 않습니다. 원본 대화가 사라지거나 변환 검증에 실패하면 `FAILED`를 반환합니다.
-- `MERGE`는 mock 생성 문서가 있으면 본문·버전을 갱신하고 없으면 생성합니다. `REGENERATE`는 해당 위키의 mock 생성 문서만 교체합니다. 직접 만든 문서는 유지합니다. 실제 AI의 병합·재생성 정책은 서버 구현 시 확정해야 합니다.
-- 문서 수정은 `content`와 양의 정수 `version`을 받고 현재 버전이 다르면 409를 반환합니다. 분류 enum은 명세에 정의되지 않아 비어 있지 않은 문자열을 받습니다. 예시는 `EVENT`, `PERSON`, `INCIDENT`입니다.
-- 오류 본문은 `{ code, message }`입니다. 명세에 발생 조건이 없는 429는 자동으로 발생시키지 않습니다. 예상하지 못한 핸들러 오류는 500으로 응답합니다. 업로드 실패, 인증 실패, 다른 위키의 리소스 접근, 버전 충돌은 테스트로 확인합니다.
-
-위키 생성 완료 화면의 **위키 URL 복사** 버튼과 위키 홈·문서 제목 오른쪽의 공유 아이콘으로 위키 홈 URL을 복사할 수 있습니다. 현재 문서의 쿼리·주석 위치는 포함하지 않습니다. 클립보드 권한이 없으면 직접 복사할 주소를 표시합니다. MSW의 데이터는 같은 브라우저·origin에만 저장되므로 다른 기기와 공유하려면 실제 백엔드가 필요합니다.
+위키 홈 URL 복사는 현재 화면의 origin을 사용합니다. 서버가 응답하는 `url`의 도메인과 달라도 프런트엔드 경로(`/wiki/:wikiId`)로 공유합니다.

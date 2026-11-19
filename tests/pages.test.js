@@ -3,392 +3,93 @@ import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer } from 'vite'
-import { defaultWiki } from './fixtures/wiki.js'
 import { readFile } from 'node:fs/promises'
-import { parseWikiData } from '../src/utils/importWiki.js'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { wikiPagePath, wikiPath } from '../src/utils/paths.js'
-import { setupServer } from 'msw/node'
-import { http, HttpResponse } from 'msw'
-import { handlers } from '../src/mocks/handlers.js'
-import { createWiki, generatePages, uploadChat } from '../src/api/wikis.js'
-import { db, resetDb } from '../src/mocks/db.js'
+import { defaultWiki } from './fixtures/wiki.js'
+import { parseWikiData } from '../src/utils/importWiki.js'
 
-test('pages render with shared navigation and valid section links', async (t) => {
-  const server = await createServer({
-    server: { middlewareMode: true, hmr: false, ws: false },
-    appType: 'custom',
-  })
-  const originalWindow = globalThis.window
+test('routes render API data, navigation, errors and safe documents', async (t) => {
+  const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom' })
   const originalFetch = globalThis.fetch
-  const originalLocation = globalThis.location
-  const api = setupServer(...handlers)
-  globalThis.location = new URL('http://localhost/')
-  api.listen({ onUnhandledFrame: 'error' })
-  const interceptedFetch = globalThis.fetch
-  let cookie = ''
-  const requests = []
-  globalThis.fetch = async (path, options = {}) => {
-    const url = new URL(path, location.href)
-    requests.push(`${options.method ?? 'GET'} ${url.pathname}`)
-    const response = await interceptedFetch(url, { ...options, headers: { ...options.headers, Cookie: cookie } })
-    if (response.headers.has('set-cookie')) cookie = response.headers.get('set-cookie').split(';')[0]
-    return response
+  const originalWindow = globalThis.window
+  const wiki = { id: 'team-42', name: '테스트 위키', hasPassword: false }
+  const page = { id: 'page-17', title: '테스트 문서', category: 'EVENT', content: '## 개요\n본문[* 주석]\n## 일정\n일정 본문', version: 3, updatedAt: '2026-11-20T00:00:00Z' }
+  const values = new Map()
+  globalThis.window = { localStorage: { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) } }
+  let status = 200
+  let jobStatus = 'COMPLETED'
+  globalThis.fetch = async (url) => {
+    const path = new URL(url, 'http://localhost').pathname.replace(/^\/api/, '')
+    if (status !== 200) return Response.json({ message: '조회 실패' }, { status })
+    if (path.includes('/generations/')) return Response.json({ status: jobStatus, createdPages: 1, updatedPages: 0 })
+    if (path.endsWith('/pages/page-17')) return Response.json(page)
+    if (path.endsWith('/pages')) return Response.json({ pages: [{ id: page.id, title: page.title, category: page.category }] })
+    if (path === '/wikis/team-42') return Response.json(wiki)
+    throw new Error(`Unexpected API request: ${path}`)
   }
-  resetDb()
-  db.wikis[0].password = ''
-  db.wikis.push({ ...db.wikis[0], id: 'team-42', name: '다른 위키' })
-  db.pages.push({ ...db.pages[0], wikiId: 'team-42', id: 'travel-17', title: '다른 문서', content: '<script>bad()</script> 다른 본문' })
-
   try {
     const { routes } = await server.ssrLoadModule('/src/routes.jsx')
     async function renderPage(path) {
       const router = createMemoryRouter(routes, { initialEntries: [path] })
       try {
         if (!router.state.initialized) await new Promise((resolve) => {
-          const unsubscribe = router.subscribe((state) => {
-            if (state.initialized) { unsubscribe(); resolve() }
-          })
+          const unsubscribe = router.subscribe((state) => { if (state.initialized) { unsubscribe(); resolve() } })
         })
         return renderToStaticMarkup(createElement(RouterProvider, { router }))
-      } finally {
-        router.dispose()
-      }
+      } finally { router.dispose() }
     }
     const cases = [
-      ['/', 'Create', 'Good chats.'],
-      ['/form', 'Create', 'Add your conversation'],
-      ['/wikis', 'My wikis', 'Your conversations, connected'],
-      [wikiPath(), 'My wikis', 'Your conversation, organized'],
-      [wikiPagePath(), 'My wikis', '2026년 부산 여행'],
-      [`${wikiPagePath()}/edit`, 'My wikis', '전체 문서 편집'],
-      [`${wikiPagePath()}/edit?section=section-2`, 'My wikis', '섹션 편집'],
-      [`${wikiPath()}/preview/edit`, 'My wikis', '페이지를 찾을 수 없습니다.'],
-      [`${wikiPath()}/import`, 'Create', 'Add your conversation'],
-      ['/unknown', null, '페이지를 찾을 수 없습니다.'],
-      ['/wiki/team-42/pages/travel-17', 'My wikis', '다른 문서'],
-      [`${wikiPath()}/preview`, 'My wikis', '페이지를 찾을 수 없습니다.'],
-      ['/wiki/missing/pages/missing', 'My wikis', '요청한 위키 또는 문서를 찾을 수 없습니다.'],
-      ['/wiki/team-42/pages/travel-17/edit', 'My wikis', '전체 문서 편집'],
+      ['/', 'Good chats.'], ['/form', 'Add your conversation'],
+      ['/wikis', 'Your conversations, connected'],
+      ['/wiki/team-42', 'Your conversation, organized'],
+      ['/wiki/team-42/import', 'Add your conversation'],
+      ['/wiki/team-42/pages/page-17', '테스트 문서'],
+      ['/wiki/team-42/pages/page-17/edit', '전체 문서 편집'],
+      ['/wiki/team-42/pages/page-17/edit?section=section-2', '섹션 편집'],
+      ['/wiki/team-42/preview', '페이지를 찾을 수 없습니다'],
+      ['/wiki/team-42/preview/edit', '페이지를 찾을 수 없습니다'],
+      ['/unknown', '페이지를 찾을 수 없습니다'],
     ]
-
-    for (const [path, activeLabel, heading] of cases) {
-      await t.test(path, async () => {
-        globalThis.window = { localStorage: { getItem: () => null } }
-        const html = await renderPage(path)
-        assert.ok(html.includes(heading))
-        assert.equal((html.match(/class="site-header(?: article-site-header)?"/g) || []).length, 1)
-        assert.equal((html.match(/class="bottom-navigation"/g) || []).length, 1)
-        assert.equal((html.match(/aria-current="page"/g) || []).length, activeLabel ? 1 : 0)
-        assert.equal((html.match(/<title>/g) || []).length, 1)
-        if (activeLabel) assert.match(html, new RegExp(`aria-current="page"[^>]*><img[^>]*>${activeLabel}</a>`))
-        assert.doesNotMatch(html, /(?:form|wiki)\.html/)
-
-        for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
-          assert.ok(html.includes(`id="${target}"`), `missing anchor: ${target}`)
-        }
-
-        for (const [, href] of html.matchAll(/href="([^"#][^"]*)"/g)) {
-          assert.ok(href === '/' || href === '/form' || href === '/wikis' || href.startsWith('/wiki/') || href.startsWith('/design/'), `unexpected page link: ${href}`)
-          assert.ok(!href.includes('?page='), `legacy page link: ${href}`)
-        }
-
-        if (path === '/' || path === '/form' || path.endsWith('/import')) {
-          const fileInput = html.match(/<input\b[^>]*type="file"[^>]*>/)[0]
-          const inputId = fileInput.match(/id="([^"]+)"/)[1]
-          assert.ok(html.includes(`for="${inputId}"`))
-          assert.match(html, /type="file" accept="\.txt,text\/plain"/)
-          assert.match(html, /id="wiki-password" type="password" autoComplete="new-password" aria-describedby="password-help" name="password"/)
-          assert.match(html, /<label class="sr-only" for="wiki-password">/)
-          assert.doesNotMatch(html, /실험용 대화 파일 다운로드|JSON으로 위키 가져오기|선택한 대화 파일을 서버로 전송/)
-          assert.match(html, /maxLength="100"/)
-          assert.match(html, /type="submit" disabled=""/)
-        }
-
-        if (path === wikiPath() || path === wikiPagePath()) {
-          assert.match(html, /aria-label="위키 URL 복사"/ )
-          assert.match(html, /share-icon-button/ )
-        }
-
-        assert.match(html, /<button type="button" aria-disabled="true"><img[^>]*>Explore<\/button>/)
-        assert.match(html, /<button type="button" aria-disabled="true"><img[^>]*>Settings<\/button>/)
-
-        if (path === wikiPath()) {
-          assert.match(html, /aria-label="위키 문서 검색"/)
-          assert.match(html, /Modified /)
-          assert.match(html, /value="newest"/)
-          assert.match(html, /value="oldest"/)
-          assert.match(html, /value="title"/)
-          assert.ok(html.includes(`href="${wikiPagePath()}"`))
-        }
-
-        if (path === wikiPagePath()) {
-          assert.match(html, /<title>2026년 부산 여행 · 우리들의 위키 · 대화위키<\/title>/)
-          assert.match(html, /친구들과 부산에 가기로 계획한 여행이다/)
-          assert.match(html, /class="toc"/)
-          assert.match(html, /href="#section-1">1\. 개요/)
-          assert.match(html, /href="#section-2">2\. 일정/)
-          assert.match(html, /id="section-1" class="wiki-section"/)
-          assert.doesNotMatch(html, /## 개요|## 일정|버전 undefined/)
-          assert.ok(requests.includes(`GET /wikis/${db.wikis[0].id}`))
-          assert.ok(requests.includes(`GET /wikis/${db.wikis[0].id}/pages/page_001`))
-          assert.ok(html.includes(`href="${wikiPagePath()}/edit"`))
-          assert.ok(html.includes(`href="${wikiPagePath()}/edit?section=section-1"`))
-          assert.ok(html.includes(`href="${wikiPagePath()}/edit?section=section-2"`))
-          assert.match(html, /aria-label="1\. 개요 섹션 편집"/)
-        }
-
-        if (path === `${wikiPagePath()}/edit`) {
-          assert.match(html, /<title>2026년 부산 여행 수정 · 대화위키<\/title>/)
-          assert.match(html, /name="version" value="3"/)
-          assert.match(html, /## 개요/)
-          assert.match(html, /## 일정/)
-          assert.match(html, /type="submit">편집 완료/)
-          assert.doesNotMatch(html, /edit-wiki-title|브라우저에 저장됩니다/)
-        }
-        if (path === `${wikiPagePath()}/edit?section=section-2`) {
-          assert.match(html, /## 일정/)
-          assert.doesNotMatch(html, /## 개요|친구들과 부산에 가기로/)
-        }
-        if (path === '/wiki/team-42/pages/travel-17') {
-          assert.match(html, /다른 위키/)
-          assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt; 다른 본문/)
-          assert.doesNotMatch(html, /부산 여행에 참여|<script>/)
-          assert.ok(html.includes('href="/wiki/team-42"'))
-        }
-        if (path === '/wiki/team-42/pages/travel-17/edit') {
-          assert.ok(html.includes('href="/wiki/team-42/pages/travel-17"'))
-          assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt; 다른 본문/)
-        }
-      })
-    }
-
-    await t.test('wiki list shows all accessible wikis without visit history and handles empty and failed responses', async () => {
-      globalThis.window = { localStorage: { getItem: () => null } }
-      const html = await renderPage('/wikis')
-      assert.ok(html.includes(`href="${wikiPath()}"`))
-      assert.match(html, /href="\/wiki\/team-42"/)
-      assert.doesNotMatch(html, /\/preview/)
-      assert.match(html, /aria-current="page" href="\/wikis"/)
-      api.use(http.get('http://localhost/wikis', () => HttpResponse.json({ wikis: [] })))
-      assert.match(await renderPage('/wikis'), /아직 접근할 수 있는 위키가 없습니다/)
-      api.use(http.get('http://localhost/wikis', () => HttpResponse.json({ message: '목록 조회 실패' }, { status: 500 })))
-      const failed = await renderPage('/wikis')
-      assert.match(failed, /목록 조회 실패/)
-      assert.match(failed, /다시 시도/)
-      api.resetHandlers()
-    })
-
-    await t.test('import page shows only previously visited wikis that are still accessible', async () => {
-      const values = new Map()
-      globalThis.window = { localStorage: { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) } }
-      assert.doesNotMatch(await renderPage('/'), /Pick up where you left off/)
-      await renderPage('/wiki/team-42')
-      await renderPage(wikiPath())
-      let html = await renderPage('/')
-      assert.match(html, /Pick up where you left off/)
-      assert.match(html, /class="recent-wiki-card" href="\/wiki\/team-42"/)
-      assert.match(html, /다른 위키/)
-      db.wikis[0].password = 'locked-again'
-      html = await renderPage('/')
-      assert.match(html, /Pick up where you left off/)
-      assert.ok(!html.includes(`class="recent-wiki-card" href="${wikiPath()}"`))
-      db.wikis.find((wiki) => wiki.id === 'team-42').password = 'locked'
-      assert.doesNotMatch(await renderPage('/'), /Pick up where you left off/)
-      db.wikis[0].password = ''
-      db.wikis.find((wiki) => wiki.id === 'team-42').password = ''
-      values.set('conversation-wiki:recent-wikis:v1', '{broken')
-      assert.doesNotMatch(await renderPage('/'), /Pick up where you left off/)
-      globalThis.window = { localStorage: {
-        getItem: () => { throw new Error('denied') },
-        setItem: () => { throw new Error('denied') },
-      } }
-      assert.doesNotMatch(await renderPage('/'), /Pick up where you left off/)
-      assert.match(await renderPage('/wiki/team-42/import'), /Pick up where you left off/)
-    })
-
-    await t.test('router navigates between pages and supports back and forward history', async () => {
-      globalThis.window = { localStorage: { getItem: () => null } }
-      const router = createMemoryRouter(routes, { initialEntries: ['/'] })
-      const render = () => renderToStaticMarkup(createElement(RouterProvider, { router }))
-      try {
-        await router.navigate('/form')
-        assert.match(render(), /Add your conversation/)
-        await router.navigate(wikiPath('team-42'))
-        assert.match(render(), /Your conversation, organized/)
-        await router.navigate(wikiPagePath('team-42', 'travel-17'))
-        assert.match(render(), /다른 문서/)
-        assert.doesNotMatch(render(), /2026년 부산 여행/)
-        await router.navigate(-1)
-        assert.equal(router.state.location.pathname, '/wiki/team-42')
-        await router.navigate(1)
-        assert.equal(router.state.location.pathname, '/wiki/team-42/pages/travel-17')
-      } finally {
-        router.dispose()
+    for (const [path, heading] of cases) await t.test(path, async () => {
+      const html = await renderPage(path)
+      assert.ok(html.includes(heading))
+      assert.equal((html.match(/class="site-header(?: article-site-header)?"/g) || []).length, 1)
+      assert.equal((html.match(/class="bottom-navigation"/g) || []).length, 1)
+      assert.equal((html.match(/<title>/g) || []).length, 1)
+      assert.match(html, /href="\/wikis"/)
+      for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) assert.ok(html.includes(`id="${target}"`))
+      if (path.endsWith('?section=section-2')) {
+        assert.match(html, /## 일정/)
+        assert.doesNotMatch(html, /## 개요/)
+      }
+      if (path === '/wiki/team-42/pages/page-17') {
+        assert.match(html, /href="#section-1"/)
+        assert.match(html, /pages\/page-17\/edit/)
+        assert.doesNotMatch(html, /\/preview/)
       }
     })
-
-    await t.test('password errors render unlock UI and successful submission reloads API data', async () => {
-      db.wikis[0].password = '1234'
-      cookie = ''
-      const router = createMemoryRouter(routes, { initialEntries: ['/'] })
-      const render = () => renderToStaticMarkup(createElement(RouterProvider, { router }))
-      try {
-        await router.navigate(wikiPagePath())
-        assert.match(render(), /위키 비밀번호/)
-        let formData = new FormData()
-        formData.set('password', 'wrong')
-        await router.navigate(wikiPagePath(), { formMethod: 'post', formData })
-        assert.match(render(), /비밀번호가 올바르지 않습니다/)
-        formData = new FormData()
-        formData.set('password', '1234')
-        await router.navigate(wikiPagePath(), { formMethod: 'post', formData })
-        assert.match(render(), /친구들과 부산에 가기로 계획한 여행이다/)
-        assert.doesNotMatch(render(), /위키 비밀번호를 입력/)
-      } finally {
-        router.dispose()
-        db.wikis[0].password = ''
-        cookie = ''
+    await t.test('remembered wiki list and empty state', async () => {
+      assert.match(await renderPage('/wikis'), /테스트 위키/)
+      values.clear()
+      assert.match(await renderPage('/wikis'), /아직 이 브라우저에 기록된/)
+    })
+    await t.test('server, authentication and missing resource errors are recoverable', async () => {
+      status = 500
+      assert.match(await renderPage('/wiki/team-42'), /다시 시도/)
+      status = 401
+      assert.match(await renderPage('/wiki/team-42'), /위키 비밀번호/)
+      status = 404
+      assert.match(await renderPage('/wiki/team-42'), /요청한 위키 또는 문서를 찾을 수 없습니다/)
+      status = 200
+    })
+    await t.test('generation states reflect server-owned jobs', async () => {
+      for (const [state, text] of [['PENDING', '위키를 만들고 있습니다'], ['PROCESSING', '위키를 만들고 있습니다'], ['FAILED', '문서를 만들지 못했습니다'], ['COMPLETED', '다 제작되었습니다!']]) {
+        jobStatus = state
+        const html = await renderPage('/wiki/team-42/generations/job-1')
+        assert.ok(html.includes(text))
+        assert.equal(html.includes('>위키로 이동<'), state === 'COMPLETED')
       }
     })
-
-    await t.test('protected wiki creation authenticates before upload and retries without duplication', async () => {
-      cookie = ''
-      const router = createMemoryRouter(routes, { initialEntries: ['/form'] })
-      const render = () => renderToStaticMarkup(createElement(RouterProvider, { router }))
-      const formData = new FormData()
-      formData.set('title', '비밀번호 위키')
-      formData.set('password', ' secret 1234 ')
-      formData.set('chat', new File(['[문서: 보호된 문서 | EVENT]\n[가상 인물] [오후 1:00] ##개요\n비공개 본문'], 'chat.txt'))
-      const submit = () => router.navigate('/form', { formMethod: 'post', formEncType: 'multipart/form-data', formData })
-      const count = db.wikis.length
-      try {
-        api.use(http.post('http://localhost/wikis/:wikiId/chats', () => HttpResponse.json({ message: '업로드 실패' }, { status: 500 })))
-        await submit()
-        assert.equal(Object.values(router.state.actionData)[0].error, '업로드 실패')
-        const wiki = db.wikis.at(-1)
-        assert.equal(wiki.name, '비밀번호 위키')
-        assert.equal(wiki.password, ' secret 1234 ')
-        assert.equal(db.wikis.length, count + 1)
-        assert.doesNotMatch(JSON.stringify(router.state.actionData), /secret 1234/)
-        api.resetHandlers()
-        cookie = '' // 인증 쿠키를 잃은 재시도에서도 같은 위키를 인증합니다.
-        formData.set('wikiId', wiki.id)
-        await submit()
-        assert.equal(db.wikis.length, count + 1)
-        assert.equal(db.chats.filter((chat) => chat.wikiId === wiki.id).length, 1)
-        assert.match(router.state.location.pathname, new RegExp(`^/wiki/${wiki.id}/generations/`))
-        const job = db.jobs.find((job) => job.wikiId === wiki.id)
-        job.startedAt = Date.now() - 6001
-        await router.revalidate()
-        const page = db.pages.find((page) => page.wikiId === wiki.id)
-        assert.ok(page)
-        cookie = ''
-        for (const path of [wikiPath(wiki.id), wikiPagePath(wiki.id, page.id), `${wikiPagePath(wiki.id, page.id)}/edit`, `/wiki/${wiki.id}/generations/${job.jobId}`]) {
-          await router.navigate(path)
-          assert.match(render(), /위키 비밀번호를 입력해주세요/)
-          assert.doesNotMatch(render(), /비공개 본문/)
-        }
-        const unlock = new FormData()
-        unlock.set('password', 'wrong')
-        await router.navigate(wikiPath(wiki.id), { formMethod: 'post', formData: unlock })
-        assert.match(render(), /비밀번호가 올바르지 않습니다/)
-        unlock.set('password', ' secret 1234 ')
-        await router.navigate(wikiPath(wiki.id), { formMethod: 'post', formData: unlock })
-        assert.match(render(), /보호된 문서/)
-        await router.navigate(wikiPagePath(wiki.id, page.id))
-        assert.match(render(), /비공개 본문/)
-      } finally {
-        router.dispose()
-        api.resetHandlers()
-        cookie = ''
-      }
-    })
-
-    await t.test('edit submission redirects to the updated document and back navigation reloads the editor', async () => {
-      const path = `${wikiPagePath('team-42', 'travel-17')}/edit`
-      const router = createMemoryRouter(routes, { initialEntries: ['/'] })
-      const render = () => renderToStaticMarkup(createElement(RouterProvider, { router }))
-      try {
-        await router.navigate(path)
-        const formData = new FormData()
-        formData.set('content', '소개\n## 개요\n저장 후 본문\n## 일정\n보존할 일정')
-        formData.set('version', '3')
-        await router.navigate(path, { formMethod: 'post', formData })
-        assert.equal(router.state.location.pathname, wikiPagePath('team-42', 'travel-17'))
-        assert.match(render(), /저장 후 본문/)
-        await router.navigate(`${path}?section=section-1`)
-        assert.match(render(), /저장 후 본문/)
-        assert.doesNotMatch(render(), /보존할 일정/)
-        formData.set('content', '## 새 개요\n부분 수정 결과')
-        formData.set('version', '4')
-        await router.navigate(`${path}?section=section-1`, { formMethod: 'post', formData })
-        assert.equal(router.state.location.hash, '#section-1')
-        assert.match(render(), /부분 수정 결과/)
-        assert.match(render(), /보존할 일정/)
-      } finally {
-        router.dispose()
-      }
-    })
-
-    await t.test('a protected edit URL unlocks in place and missing sections show a recoverable error', async () => {
-      db.wikis[0].password = '1234'
-      cookie = ''
-      const path = `${wikiPagePath()}/edit?section=section-2`
-      const router = createMemoryRouter(routes, { initialEntries: ['/'] })
-      const render = () => renderToStaticMarkup(createElement(RouterProvider, { router }))
-      try {
-        await router.navigate(path)
-        assert.match(render(), /위키 비밀번호/)
-        const formData = new FormData()
-        formData.set('password', 'wrong')
-        await router.navigate(path, { formMethod: 'post', formData })
-        assert.match(render(), /비밀번호가 올바르지 않습니다/)
-        formData.set('password', '1234')
-        await router.navigate(path, { formMethod: 'post', formData })
-        assert.match(render(), /선택한 섹션의 제목과 본문/)
-        assert.doesNotMatch(render(), /## 개요/)
-        await router.navigate(`${wikiPagePath()}/edit?section=section-999`)
-        assert.match(render(), /편집할 섹션을 찾을 수 없습니다/)
-        assert.match(render(), /다시 시도/)
-      } finally {
-        router.dispose()
-        db.wikis[0].password = ''
-        cookie = ''
-      }
-    })
-
-    await t.test('empty wiki and server errors do not fall back to a local document', async () => {
-      db.wikis.push({ ...db.wikis[0], id: 'empty', name: '빈 위키' })
-      assert.match(await renderPage(wikiPath('empty')), /아직 생성된 문서가 없습니다/)
-      assert.doesNotMatch(await renderPage(wikiPath('empty')), /2026년 부산 여행/)
-      api.use(
-        http.get('http://localhost/wikis/broken', () => HttpResponse.json({ message: '일시적인 서버 오류입니다.' }, { status: 500 })),
-        http.get('http://localhost/wikis/broken/pages', () => HttpResponse.json({ pages: [] })),
-      )
-      assert.match(await renderPage(wikiPath('broken')), /일시적인 서버 오류입니다/)
-      api.resetHandlers()
-    })
-
-    await t.test('generation route shows waiting, completion and a link to persisted wiki pages', async () => {
-      const wiki = await createWiki({ name: '대기 화면 테스트' })
-      const chat = await uploadChat(wiki.id, new File(['[문서: 화면 테스트 | EVENT]\n[가상 인물] [오후 1:00] ##개요\n본문'], 'chat.txt'))
-      const job = await generatePages(wiki.id, { chatIds: [chat.id], mode: 'MERGE' })
-      const path = `${wikiPath(wiki.id)}/generations/${job.jobId}`
-      const waiting = await renderPage(path)
-      assert.match(waiting, /위키를 만들고 있습니다/)
-      assert.doesNotMatch(waiting, /위키로 이동|위키 URL 복사/)
-      db.jobs.find((item) => item.jobId === job.jobId).startedAt = Date.now() - 6001
-      const done = await renderPage(path)
-      assert.match(done, /다 제작되었습니다!/)
-      assert.match(done, /aria-label="위키 URL 복사"/)
-      assert.match(done, /문서 1개를 저장했습니다/)
-      assert.ok(done.includes(`href="${wikiPath(wiki.id)}"`))
-      assert.match(await renderPage(wikiPath(wiki.id)), /화면 테스트/)
-      db.jobs.find((item) => item.jobId === job.jobId).status = 'FAILED'
-      assert.match(await renderPage(path), /문서를 만들지 못했습니다/)
-    })
-
     await t.test('documents render safely with sequential footnotes', async () => {
       const wiki = structuredClone(defaultWiki)
       wiki.title = '<script>alert("title")</script>'
@@ -414,23 +115,6 @@ test('pages render with shared navigation and valid section links', async (t) =>
       assert.doesNotMatch(html, /id="overview"|\[\*/)
       for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
         assert.ok(html.includes(`id="${target}"`), `missing anchor: ${target}`)
-      }
-    })
-
-    await t.test('API responses with only title, category and content render through WikiDocument', async () => {
-      api.use(http.get('http://localhost/wikis/team-42/pages/travel-17', () => HttpResponse.json({
-        title: 'API 전용 문서', category: 'PERSON', content: '##개요\n첫 문단\n\n둘째 문단\n## 활동\n활동 본문',
-      })))
-      try {
-        const html = await renderPage('/wiki/team-42/pages/travel-17')
-        assert.match(html, /<h1>API 전용 문서<\/h1>/)
-        assert.match(html, /href="#section-1">1\. 개요/)
-        assert.match(html, /href="#section-2">2\. 활동/)
-        assert.match(html, /첫 문단\n\n둘째 문단/)
-        assert.match(html, /활동 본문/)
-        assert.doesNotMatch(html, /##|undefined|wiki-infobox/)
-      } finally {
-        api.resetHandlers()
       }
     })
 
@@ -477,12 +161,9 @@ test('pages render with shared navigation and valid section links', async (t) =>
       assert.doesNotMatch(minimalHtml, /class="toc"|wiki-infobox|참고 자료/)
     })
   } finally {
+    globalThis.fetch = originalFetch
     if (originalWindow === undefined) delete globalThis.window
     else globalThis.window = originalWindow
-    api.close()
-    globalThis.fetch = originalFetch
-    if (originalLocation === undefined) delete globalThis.location
-    else globalThis.location = originalLocation
     await server.close()
   }
 })

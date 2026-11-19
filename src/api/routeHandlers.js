@@ -1,14 +1,21 @@
-import { createPage, generatePages, getGeneration, getWikis, createWiki, getPage, getPages, getWiki, unlockWiki, updatePage, uploadChat } from './wikis.js'
+import { generatePages, getGeneration, createWiki, getPage, getPages, getWiki, unlockWiki, updatePage, uploadChat } from './wikis.js'
 import { readChatFile } from '../utils/readChatFile.js'
 import { redirect } from 'react-router'
 import { wikiPagePath, wikiPath } from '../utils/paths.js'
 import { getPageSection, parseWikiData } from '../utils/importWiki.js'
 import { getRecentWikiIds } from '../utils/recentWikis.js'
 
-export const wikiListLoader = () => getWikis()
+export async function wikiListLoader() {
+  // shortcut: 브라우저에 기록된 위키만 조회합니다. 전체 목록 API가 추가되면 교체합니다.
+  const wikis = await Promise.all(getRecentWikiIds().map((id) => getWiki(id).catch((error) => {
+    if (error.status === 401 || error.status === 404) return null
+    throw error
+  })))
+  return { wikis: wikis.filter(Boolean) }
+}
 
 export async function importLoader({ params }) {
-  // shortcut: 이 브라우저에서 생성·조회한 위키만 기억합니다. 전체 목록 API가 생기면 교체합니다.
+  // 최근 방문 목록은 전체 목록과 별도로 이 브라우저의 기록만 사용합니다.
   const ids = [...new Set([params.wikiId, ...getRecentWikiIds()].filter(Boolean))]
   const wikis = await Promise.all(ids.map((id) => getWiki(id).catch(() => null)))
   return { wikis: wikis.filter(Boolean) }
@@ -103,12 +110,5 @@ export async function generationLoader({ params }) {
   const { wikiId, jobId } = params
   const job = await getGeneration(wikiId, jobId)
   if (!['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'].includes(job.status)) throw new Error('생성 작업 상태가 올바르지 않습니다.')
-  if (job.status !== 'COMPLETED' || job.pages === undefined) return job
-  if (!Array.isArray(job.pages) || !job.pages.length || job.pages.length > 1000) throw new Error('생성된 문서 목록이 올바르지 않습니다.')
-  for (const page of job.pages) parseWikiData(page)
-  // 작업과 문서 순번으로 저장을 식별해 재조회·재시도에도 중복 문서를 만들지 않습니다.
-  for (const [generationIndex, page] of job.pages.entries()) {
-    await createPage(wikiId, { ...page, generationJobId: jobId, generationIndex })
-  }
-  return getGeneration(wikiId, jobId)
+  return job
 }

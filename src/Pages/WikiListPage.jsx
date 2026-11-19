@@ -15,7 +15,7 @@ export default function WikiListPage() {
           <div className="wiki-statistics"><div><strong>{wikis.length}</strong><span>accessible wikis</span></div></div>
         </section>
         <div className="section-heading"><h2>Your conversations, connected</h2><ButtonLink to="/" primary>새 위키 만들기</ButtonLink></div>
-        <p className="muted small">지금 접근할 수 있는 모든 위키를 모았어요.</p>
+        <p className="muted small">이 브라우저에서 만들거나 방문한 위키 중 지금 접근할 수 있는 항목입니다.</p>
         {wikis.length ? (
           <ul className="wiki-list">
             {wikis.map((wiki) => (
@@ -28,7 +28,7 @@ export default function WikiListPage() {
               </li>
             ))}
           </ul>
-        ) : <p className="empty-results">아직 접근할 수 있는 위키가 없습니다. 새 위키를 만들어 대화를 모아보세요.</p>}
+        ) : <p className="empty-results">아직 이 브라우저에 기록된 접근 가능한 위키가 없습니다. 새 위키를 만들어 대화를 모아보세요.</p>}
       </main>
     </>
   )
