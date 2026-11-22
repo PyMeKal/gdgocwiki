@@ -1,4 +1,4 @@
-import { getRecentWikiIds, rememberWiki } from '../utils/recentWikis.js'
+import { rememberWiki } from '../utils/recentWikis.js'
 
 export const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
 
