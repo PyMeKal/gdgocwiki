@@ -17,11 +17,9 @@ export const routes = [{
   children: [
     // { path: '/', element: <HomePage /> },
     { path: '/', element: <FormPage />, loader: importLoader, action: uploadAction },
-    { path: '/form', element: <FormPage />, loader: importLoader, action: uploadAction },
     { path: '/wikis', element: <WikiListPage />, loader: wikiListLoader, errorElement: <WikiApiError /> },
     { path: '/wiki/:wikiId', element: <WikiHomePage />, loader: wikiLoader, action: unlockAction, errorElement: <WikiApiError /> },
     { path: '/wiki/:wikiId/generations/:jobId', element: <GenerationPage />, loader: generationLoader, action: unlockAction, errorElement: <WikiApiError /> },
-    { path: '/wiki/:wikiId/import', element: <FormPage />, loader: importLoader, action: uploadAction },
     { path: '/wiki/:wikiId/pages/:pagesId', element: <WikiPage />, loader: pageLoader, action: unlockAction, errorElement: <WikiApiError /> },
     { path: '/wiki/:wikiId/pages/:pagesId/edit', element: <WikiPageEditPage />, loader: pageEditLoader, action: pageEditAction, errorElement: <WikiApiError /> },
     { path: '*', element: (

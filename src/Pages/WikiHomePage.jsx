@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Link, useLoaderData, useParams, useSearchParams } from 'react-router'
 import CopyWikiUrlButton from '../components/CopyWikiUrlButton.jsx'
-import ButtonLink from '../components/ButtonLink.jsx'
-import { wikiPagePath, wikiPath } from '../utils/paths.js'
+import { wikiPagePath} from '../utils/paths.js'
 import { filterPages } from '../utils/filterPages.js'
 
 export default function WikiHomePage() {
@@ -36,7 +35,7 @@ export default function WikiHomePage() {
           <div className="sort-row"><label><span className="sr-only">문서 정렬</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="newest">Last modified ↓</option><option value="oldest">Last modified ↑</option><option value="title">Title A–Z</option></select></label></div>
           {visiblePages.length ? <ul className="wiki-page-list">{visiblePages.map((page, index) => <li key={page.id}><Link to={wikiPagePath(wikiId, page.id)}><span className="article-number">{String(index + 1).padStart(2, '0')}</span><span className="article-summary"><strong>{page.title}</strong>{Number.isFinite(Date.parse(page.updatedAt)) && <time dateTime={page.updatedAt}>Modified {new Date(page.updatedAt).toLocaleDateString('ko-KR')}</time>}{page.category && <small>Folder: {page.category}</small>}</span><img src="/design/arrow.svg" alt="" /></Link></li>)}</ul> : <p className="empty-results">{pages.length ? '검색 결과가 없습니다.' : '아직 생성된 문서가 없습니다.'}</p>}
         </section>
-        <div className="actions"><ButtonLink to={`${wikiPath(wikiId)}/import`}>새 대화 올리기</ButtonLink></div>
+        
       </main>
     </>
   )
