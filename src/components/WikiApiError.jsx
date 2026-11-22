@@ -1,12 +1,16 @@
-import { Form, Link, useActionData, useNavigation, useRevalidator, useRouteError } from 'react-router'
+import { useQueryClient } from '@tanstack/react-query'
+import { Form, Link, useActionData, useNavigation, useRouteError, useLocation, useNavigate } from 'react-router'
 
-export default function WikiApiError() {
-  const error = useRouteError()
+export default function WikiApiError({ error: queryError, onRetry }) {
+  const routeError = useRouteError()
+  const error = queryError ?? routeError
   const result = useActionData()
   const navigation = useNavigation()
-  const revalidator = useRevalidator()
+  const client = useQueryClient()
+  const location = useLocation()
+  const navigate = useNavigate()
   const locked = error.status === 401
-  const busy = navigation.state !== 'idle' || revalidator.state !== 'idle'
+  const busy = navigation.state !== 'idle'
   return (
     <main id="main" className="container form-page">
       <title>{`${locked ? '위키 인증' : '위키 조회 오류'} · 대화위키`}</title>
@@ -21,7 +25,11 @@ export default function WikiApiError() {
           {result?.error && <p role="alert" className="upload-error">{result.error}</p>}
           <button className="button primary" type="submit" disabled={busy}>{busy ? '확인 중…' : '위키 열기'}</button>
         </Form>
-      ) : <button className="button" type="button" disabled={busy} onClick={() => revalidator.revalidate()}>다시 시도</button>}
+      ) : <button className="button" type="button" disabled={busy} onClick={async () => {
+        if (onRetry) return onRetry()
+        await client.resetQueries()
+        navigate(location.pathname + location.search, { replace: true })
+      }}>다시 시도</button>}
       <p><Link to="/">홈으로 돌아가기</Link></p>
     </main>
   )

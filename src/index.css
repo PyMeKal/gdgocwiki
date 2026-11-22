@@ -331,14 +331,14 @@ input[type="password"] { width: 100%; }
   .wiki-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .page-skeleton .react-loading-skeleton::after { animation: none; }
+  .container .react-loading-skeleton::after { animation: none; }
 }
 
-.page-skeleton .react-loading-skeleton {
+.container .react-loading-skeleton {
   --base-color: var(--color-text-secondary);
   --highlight-color: var(--color-muted);
 }
-.page-skeleton .wiki-overview .react-loading-skeleton {
+.wiki-overview .react-loading-skeleton {
   --base-color: var(--color-accent);
   --highlight-color: var(--color-primary-hover);
 }

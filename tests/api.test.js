@@ -3,8 +3,11 @@ import { afterEach, test } from 'node:test'
 import axios from 'axios'
 import { mockAxios } from './helpers/mockAxios.js'
 import * as api from '../src/api/wikis.js'
-import { generationLoader, pageEditAction, pageEditLoader, uploadAction, wikiListLoader } from '../src/api/routeHandlers.js'
+import { pageEditAction, uploadAction } from '../src/api/routeHandlers.js'
 
+import { createQueryClient, editPageQuery, generationQuery } from '../src/api/queries.js'
+
+const client = createQueryClient()
 const originalAdapter = axios.defaults.adapter
 const calls = []
 function respond(data, status = 200) {
@@ -14,7 +17,7 @@ function respond(data, status = 200) {
     return status === 204 ? new Response(null, { status }) : Response.json(data, { status })
   })
 }
-afterEach(() => { axios.defaults.adapter = originalAdapter })
+afterEach(() => { axios.defaults.adapter = originalAdapter; client.clear() })
 
 const wiki = { id: 'team/42', name: '테스트 위키', hasPassword: false }
 const page = { id: 'page/1', title: '문서', category: 'EVENT', content: '소개\r\n## 개요\r\n원본\r\n## 일정\r\n유지\r\n', version: 3 }
@@ -102,38 +105,16 @@ test('requests log each outcome once without exposing payloads or server message
   ])
 })
 
-test('wiki list loads remembered IDs, skips locked or deleted wikis and reports server errors', async () => {
-  const originalWindow = globalThis.window
-  try {
-    const values = new Map([['conversation-wiki:recent-wikis:v1', JSON.stringify(['open', 'locked', 'deleted'])]])
-    globalThis.window = { localStorage: { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) } }
-    const paths = []
-    mockAxios(async (url) => {
-      paths.push(url)
-      return url.endsWith('/locked') ? Response.json({}, { status: 401 }) : url.endsWith('/deleted') ? Response.json({}, { status: 404 }) : Response.json({ ...wiki, id: 'open' })
-    })
-    assert.deepEqual(await wikiListLoader(), { wikis: [{ ...wiki, id: 'open' }] })
-    assert.ok(paths.every((path) => path.startsWith(`${api.API_BASE_URL}/wikis/`)))
-    mockAxios(async () => Response.json({ message: '서버 오류' }, { status: 500 }))
-    await assert.rejects(wikiListLoader(), /서버 오류/)
-    values.clear()
-    assert.deepEqual(await wikiListLoader(), { wikis: [] })
-  } finally {
-    if (originalWindow === undefined) delete globalThis.window
-    else globalThis.window = originalWindow
-  }
-})
-
 test('generation polling only reads server-owned work and rejects invalid statuses', async () => {
   for (const status of ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED']) {
     const job = { status, createdPages: 2, updatedPages: 0, pages: [page] }
     respond(job)
-    assert.deepEqual(await generationLoader({ params: { wikiId: wiki.id, jobId: 'job' } }), job)
+    assert.deepEqual(await client.fetchQuery({ ...generationQuery(wiki.id, 'job', client), staleTime: 0 }), job)
     assert.equal(calls.length, 1)
     assert.equal(calls[0].method, 'GET')
   }
   respond({ status: 'UNKNOWN' })
-  await assert.rejects(generationLoader({ params: { wikiId: wiki.id, jobId: 'job' } }), /상태/)
+  await assert.rejects(client.fetchQuery({ ...generationQuery(wiki.id, 'job', client), staleTime: 0 }), /상태/)
 })
 
 function editRequest(content, version = 3) {
@@ -147,15 +128,15 @@ test('section editing preserves other sections and uses the loaded version', asy
     if (options.method === 'PATCH') writes.push(JSON.parse(options.data))
     return Response.json(url.endsWith('/pages/page%2F1') ? page : wiki)
   })
-  const loaded = await pageEditLoader({ params, request: editRequest('') })
+  const loaded = await client.fetchQuery(editPageQuery(wiki.id, page.id, 'section-1'))
   assert.equal(loaded.editContent, '## 개요\r\n원본\r\n')
-  const response = await pageEditAction({ params, request: editRequest('## 새 제목\n수정') })
+  const response = await pageEditAction({ params, request: editRequest('## 새 제목\n수정') }, client)
   assert.equal(response.status, 302)
   assert.deepEqual(writes, [{ content: '소개\r\n## 새 제목\n수정\n## 일정\r\n유지\r\n', version: 3 }])
-  assert.match((await pageEditAction({ params, request: editRequest('## 변경\n내용', 2) })).error, /다른 사용자/)
+  assert.match((await pageEditAction({ params, request: editRequest('## 변경\n내용', 2) }, client)).error, /다른 사용자/)
   assert.equal(writes.length, 1)
   mockAxios(async () => Response.json({ message: '저장 실패' }, { status: 500 }))
-  assert.equal((await pageEditAction({ params, request: editRequest('## 변경\n내용') })).error, '저장 실패')
+  assert.equal((await pageEditAction({ params, request: editRequest('## 변경\n내용') }, client)).error, '저장 실패')
 })
 
 test('upload action authenticates before upload and generation; invalid files send nothing', async () => {
@@ -169,7 +150,7 @@ test('upload action authenticates before upload and generation; invalid files se
     if (url.endsWith('/unlock')) return new Response(null, { status: 204 })
     return Response.json(url.endsWith('/generations') ? { jobId: 'job' } : url.endsWith('/chats') ? { id: 'chat' } : { id: 'created' })
   })
-  const submit = () => uploadAction({ request: new Request('http://localhost/', { method: 'POST', body: form }) })
+  const submit = () => uploadAction({ request: new Request('http://localhost/', { method: 'POST', body: form }) }, client)
   assert.equal((await submit()).headers.get('Location'), '/wiki/created/generations/job')
   assert.deepEqual(methods.map(value => value.replace(api.API_BASE_URL, '')), ['POST /wikis', 'POST /wikis/created/unlock', 'POST /wikis/created/chats', 'POST /wikis/created/generations'])
   form.set('chat', new File(['bad'], 'test.exe'))

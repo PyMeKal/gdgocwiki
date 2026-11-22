@@ -1,7 +1,5 @@
 import { Link } from 'react-router'
 import App from './App.jsx'
-import PageLayout from './components/PageLayout.jsx'
-import PageSkeleton from './components/PageSkeleton.jsx'
 import GenerationPage from './Pages/GenerationPage.jsx'
 import FormPage from './Pages/FormPage.jsx'
 // import HomePage from './Pages/HomePage.jsx'
@@ -9,20 +7,19 @@ import WikiHomePage from './Pages/WikiHomePage.jsx'
 import WikiPage from './Pages/WikiPage.jsx'
 import WikiListPage from './Pages/WikiListPage.jsx'
 import WikiApiError from './components/WikiApiError.jsx'
-import { importLoader, generationLoader, pageEditAction, pageEditLoader, pageLoader, unlockAction, uploadAction, wikiListLoader, wikiLoader } from './api/routeHandlers.js'
+import { pageEditAction, unlockAction, uploadAction } from './api/routeHandlers.js'
 import WikiPageEditPage from './Pages/WikiPageEditPage.jsx'
 
-export const routes = [{
+export const createRoutes = (client) => [{
   element: <App />,
-  hydrateFallbackElement: <PageLayout><PageSkeleton /></PageLayout>,
   children: [
     // { path: '/', element: <HomePage /> },
-    { path: '/', element: <FormPage />, loader: importLoader, action: uploadAction },
-    { path: '/wikis', element: <WikiListPage />, loader: wikiListLoader, errorElement: <WikiApiError /> },
-    { path: '/wiki/:wikiId', element: <WikiHomePage />, loader: wikiLoader, action: unlockAction, errorElement: <WikiApiError /> },
-    { path: '/wiki/:wikiId/generations/:jobId', element: <GenerationPage />, loader: generationLoader, action: unlockAction, errorElement: <WikiApiError /> },
-    { path: '/wiki/:wikiId/pages/:pagesId', element: <WikiPage />, loader: pageLoader, action: unlockAction, errorElement: <WikiApiError /> },
-    { path: '/wiki/:wikiId/pages/:pagesId/edit', element: <WikiPageEditPage />, loader: pageEditLoader, action: pageEditAction, errorElement: <WikiApiError /> },
+    { path: '/', element: <FormPage />, action: (args) => uploadAction(args, client) },
+    { path: '/wikis', element: <WikiListPage />, errorElement: <WikiApiError /> },
+    { path: '/wiki/:wikiId', element: <WikiHomePage />, action: (args) => unlockAction(args, client), errorElement: <WikiApiError /> },
+    { path: '/wiki/:wikiId/generations/:jobId', element: <GenerationPage />, action: (args) => unlockAction(args, client), errorElement: <WikiApiError /> },
+    { path: '/wiki/:wikiId/pages/:pagesId', element: <WikiPage />, action: (args) => unlockAction(args, client), errorElement: <WikiApiError /> },
+    { path: '/wiki/:wikiId/pages/:pagesId/edit', element: <WikiPageEditPage />, action: (args) => pageEditAction(args, client), errorElement: <WikiApiError /> },
     { path: '*', element: (
       <main id="main" className="container form-page">
         <title>페이지를 찾을 수 없습니다 · 대화위키</title>

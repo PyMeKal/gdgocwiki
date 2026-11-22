@@ -1,25 +1,24 @@
 import Skeleton from 'react-loading-skeleton'
-import { useEffect } from 'react'
-import { useLoaderData, useParams, useRevalidator } from 'react-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { generationQuery } from '../api/queries.js'
+import WikiApiError from '../components/WikiApiError.jsx'
+import { useParams } from 'react-router'
 import CopyWikiUrlButton from '../components/CopyWikiUrlButton.jsx'
 import Breadcrumb from '../components/Breadcrumb.jsx'
 import ButtonLink from '../components/ButtonLink.jsx'
 import { wikiPath } from '../utils/paths.js'
 
-export default function GenerationPage({ loading = false, mainId = 'main' }) {
-  const data = useLoaderData()
-  const job = loading ? undefined : data
-  const { wikiId } = useParams()
-  const revalidator = useRevalidator()
-  const pending = !loading && ['PENDING', 'PROCESSING'].includes(job.status)
-  useEffect(() => {
-    if (!pending || revalidator.state !== 'idle') return
-    const timer = setTimeout(() => revalidator.revalidate(), 1000)
-    return () => clearTimeout(timer)
-  }, [pending, revalidator, job])
+export default function GenerationPage() {
+  const { wikiId, jobId } = useParams()
+  const client = useQueryClient()
+  const result = useQuery(generationQuery(wikiId, jobId, client))
+  const job = result.data
+  const loading = result.isPending
+  const pending = !loading && ['PENDING', 'PROCESSING'].includes(job?.status)
+  if (result.error) return <WikiApiError error={result.error} onRetry={() => result.refetch()} />
 
   return (
-    <main id={mainId} className="container form-page" aria-busy={loading}>
+    <main id="main" className="container form-page" aria-busy={loading}>
       <title>위키 제작 · 대화위키</title>
       <Breadcrumb>위키 제작</Breadcrumb>
       <section className="panel" aria-busy={loading || pending}>

@@ -12,7 +12,8 @@
 - `src/Pages/WikiListPage.jsx`: 접근 가능한 위키 전체 목록
 - `src/utils/wiki.js`: 공통 주석 처리
 - `src/Pages/WikiHomePage.jsx`, `src/Pages/WikiPage.jsx`: URL의 ID로 위키·문서 목록·문서 본문을 GET하여 표시
-- `src/api/routeHandlers.js`, `src/components/WikiApiError.jsx`: 업로드 action, 조회 loader, 비밀번호 인증과 오류·재시도
+- `src/api/queries.js`: TanStack Query 조회·캐시·생성 상태 폴링
+- `src/api/routeHandlers.js`, `src/components/WikiApiError.jsx`: 업로드·저장 action, 비밀번호 인증과 오류·재시도
 - `src/components/WikiDocument.jsx`: 제목, 계층형 목차·본문, Infobox, 주석·참고 자료를 조립하는 공통 렌더러
 - `src/components/WikiInfobox.jsx`, `src/components/WikiImage.jsx`: 주요 정보 표와 이미지
 - `src/components/Footnote.jsx`: 본문 주석 번호 링크와 마우스·키보드 포커스 툴팁, 스크린 리더용 주석 연결

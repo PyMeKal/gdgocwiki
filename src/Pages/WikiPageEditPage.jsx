@@ -1,6 +1,9 @@
+import { useQuery } from '@tanstack/react-query'
+import { editPageQuery } from '../api/queries.js'
+import WikiApiError from '../components/WikiApiError.jsx'
 import Skeleton from 'react-loading-skeleton'
 import { useEffect, useState } from 'react'
-import { Form, Link, useActionData, useBlocker, useLoaderData, useNavigation, useParams, useSearchParams } from 'react-router'
+import { Form, Link, useActionData, useBlocker, useNavigation, useParams, useSearchParams } from 'react-router'
 import Breadcrumb from '../components/Breadcrumb.jsx'
 import ButtonLink from '../components/ButtonLink.jsx'
 import Notice from '../components/Notice.jsx'
@@ -58,17 +61,17 @@ function PageEditor({ page, editContent, sectionId, returnPath }) {
   )
 }
 
-export default function WikiPageEditPage({ loading = false, wikiId: pendingWikiId, pagesId: pendingPagesId, mainId = 'main' }) {
-  const data = useLoaderData()
-  const { page, editContent } = loading ? {} : data
-  const params = useParams()
-  const wikiId = pendingWikiId ?? params.wikiId
-  const pagesId = pendingPagesId ?? params.pagesId
+export default function WikiPageEditPage() {
+  const { wikiId, pagesId } = useParams()
   const [searchParams] = useSearchParams()
   const sectionId = searchParams.get('section')
+  const result = useQuery(editPageQuery(wikiId, pagesId, sectionId))
+  const { page, editContent } = result.data ?? {}
+  const loading = result.isPending
+  if (result.error && !result.data) return <WikiApiError error={result.error} onRetry={() => result.refetch()} />
   const returnPath = wikiPagePath(wikiId, pagesId)
   return (
-    <main id={mainId} className="container form-page wiki-edit-page" aria-busy={loading}>
+    <main id="main" className="container form-page wiki-edit-page" aria-busy={loading}>
       <title>{loading ? '문서 편집 · 대화위키' : `${page.title} 수정 · 대화위키`}</title>
       <Breadcrumb><Link to={returnPath}>{loading ? <Skeleton width={100} /> : page.title}</Link> / 문서 편집</Breadcrumb>
       <h1>{sectionId === null ? '전체 문서 편집' : '섹션 편집'}</h1>

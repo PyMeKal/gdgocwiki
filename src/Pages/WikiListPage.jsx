@@ -1,19 +1,22 @@
+import { useQueryClient } from '@tanstack/react-query'
+import { useRecentWikis } from '../api/queries.js'
+import WikiApiError from '../components/WikiApiError.jsx'
 import Skeleton from 'react-loading-skeleton'
-import { Link, useLoaderData } from 'react-router'
+import { Link } from 'react-router'
 import ButtonLink from '../components/ButtonLink.jsx'
 import { wikiPath } from '../utils/paths.js'
 
-export default function WikiListPage({ loading = false, mainId = 'main' }) {
-  const data = useLoaderData()
-  const { wikis = [] } = loading ? {} : data
-  const titleId = `${mainId}-wikis-title`
+export default function WikiListPage() {
+  const client = useQueryClient()
+  const { wikis, isPending: loading, error } = useRecentWikis()
+  if (error) return <WikiApiError error={error} onRetry={() => client.resetQueries({ queryKey: ['wiki'] })} />
   return (
     <>
       <title>My wikis · 대화위키</title>
-      <main id={mainId} className="container form-page wiki-home-page wiki-list-page" aria-busy={loading}>
-        <section className="wiki-overview" aria-labelledby={titleId}>
+      <main id="main" className="container form-page wiki-home-page wiki-list-page" aria-busy={loading}>
+        <section className="wiki-overview" aria-labelledby="wikis-title">
           <span className="wiki-visibility">YOUR KNOWLEDGE SPACE</span>
-          <h1 id={titleId}>My wikis</h1>
+          <h1 id="wikis-title">My wikis</h1>
           <p>함께 나눈 대화, 다시 꺼내볼 수 있는 지식으로.</p>
           <div className="wiki-statistics"><div><strong>{loading ? <Skeleton width={30} /> : wikis.length}</strong><span>accessible wikis</span></div></div>
         </section>

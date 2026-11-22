@@ -1,3 +1,6 @@
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createQueryClient, wikiQuery, pagesQuery, pageQuery, editPageQuery, generationQuery } from '../src/api/queries.js'
+import { getRecentWikiIds } from '../src/utils/recentWikis.js'
 import axios from 'axios'
 import { mockAxios } from './helpers/mockAxios.js'
 import assert from 'node:assert/strict'
@@ -26,6 +29,8 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
   let jobStatus = 'COMPLETED'
   mockAxios(async (url) => {
     const path = new URL(url, 'http://localhost').pathname.replace(/^\/api/, '')
+    if (path === '/wikis/locked') return Response.json({ message: '인증 필요' }, { status: 401 })
+    if (path === '/wikis/deleted') return Response.json({ message: '삭제된 위키' }, { status: 404 })
     if (status !== 200) return Response.json({ message: '조회 실패' }, { status })
     if (path.includes('/generations/')) return Response.json({ status: jobStatus, createdPages: 1, updatedPages: 0 })
     if (path.endsWith('/pages/page-17')) return Response.json(page)
@@ -34,21 +39,29 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
     throw new Error(`Unexpected API request: ${path}`)
   })
   try {
-    const { routes } = await server.ssrLoadModule('/src/routes.jsx')
+    const { createRoutes } = await server.ssrLoadModule('/src/routes.jsx')
     async function renderPage(path) {
-      const router = createMemoryRouter(routes, { initialEntries: [path] })
+      const client = createQueryClient()
+      const url = new URL(path, 'http://localhost')
+      const parts = url.pathname.split('/').filter(Boolean)
+      const load = (options) => client.fetchQuery(options).catch(() => {})
+      if (parts[0] === 'wiki' && parts[1] === wiki.id) {
+        if (parts[2] === 'pages') {
+          if (parts[4] === 'edit') await load(editPageQuery(wiki.id, page.id, url.searchParams.get('section')))
+          else await Promise.all([load(wikiQuery(wiki.id)), load(pageQuery(wiki.id, page.id))])
+        } else if (parts[2] === 'generations') await load(generationQuery(wiki.id, parts[3], client))
+        else if (parts.length === 2) await Promise.all([load(wikiQuery(wiki.id)), load(pagesQuery(wiki.id, client))])
+      } else if (path === '/' || path === '/wikis') await Promise.all(getRecentWikiIds().map((id) => load(wikiQuery(id))))
+      const router = createMemoryRouter(createRoutes(client), { initialEntries: [path] })
       try {
-        if (!router.state.initialized) await new Promise((resolve) => {
-          const unsubscribe = router.subscribe((state) => { if (state.initialized) { unsubscribe(); resolve() } })
-        })
-        return renderToStaticMarkup(createElement(RouterProvider, { router }))
-      } finally { router.dispose() }
+        return renderToStaticMarkup(createElement(QueryClientProvider, { client }, createElement(RouterProvider, { router })))
+      } finally { router.dispose(); client.clear() }
     }
     const cases = [
-      ['/', 'Good chats.'], ['/form', 'Add your conversation'],
+      ['/', 'Good chats.'], ['/form', '페이지를 찾을 수 없습니다'],
       ['/wikis', 'Your conversations, connected'],
       ['/wiki/team-42', 'Your conversation, organized'],
-      ['/wiki/team-42/import', 'Add your conversation'],
+      ['/wiki/team-42/import', '페이지를 찾을 수 없습니다'],
       ['/wiki/team-42/pages/page-17', '테스트 문서'],
       ['/wiki/team-42/pages/page-17/edit', '전체 문서 편집'],
       ['/wiki/team-42/pages/page-17/edit?section=section-2', '섹션 편집'],
@@ -78,6 +91,13 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
       assert.match(await renderPage('/wikis'), /테스트 위키/)
       values.clear()
       assert.match(await renderPage('/wikis'), /아직 이 브라우저에 기록된/)
+    })
+    await t.test('remembered lists skip locked and deleted wikis', async () => {
+      values.set('conversation-wiki:recent-wikis:v1', JSON.stringify([wiki.id, 'locked', 'deleted']))
+      const html = await renderPage('/wikis')
+      assert.match(html, /테스트 위키/)
+      assert.doesNotMatch(html, /인증 필요|삭제된 위키|위키를 불러오지 못했습니다/)
+      values.clear()
     })
     await t.test('server, authentication and missing resource errors are recoverable', async () => {
       status = 500
