@@ -1,18 +1,20 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
+import axios from 'axios'
+import { mockAxios } from './helpers/mockAxios.js'
 import * as api from '../src/api/wikis.js'
 import { generationLoader, pageEditAction, pageEditLoader, uploadAction, wikiListLoader } from '../src/api/routeHandlers.js'
 
-const originalFetch = globalThis.fetch
+const originalAdapter = axios.defaults.adapter
 const calls = []
 function respond(data, status = 200) {
   calls.length = 0
-  globalThis.fetch = async (url, options) => {
+  mockAxios(async (url, options) => {
     calls.push({ url, ...options })
     return status === 204 ? new Response(null, { status }) : Response.json(data, { status })
-  }
+  })
 }
-afterEach(() => { globalThis.fetch = originalFetch })
+afterEach(() => { axios.defaults.adapter = originalAdapter })
 
 const wiki = { id: 'team/42', name: '테스트 위키', hasPassword: false }
 const page = { id: 'page/1', title: '문서', category: 'EVENT', content: '소개\r\n## 개요\r\n원본\r\n## 일정\r\n유지\r\n', version: 3 }
@@ -40,8 +42,9 @@ test('all API functions use the configured base, encoded IDs and credentialed re
     assert.equal(calls.length, 1)
     assert.equal(calls[0].url, `${api.API_BASE_URL}${path}`)
     assert.equal(calls[0].method, method)
-    assert.equal(calls[0].credentials, 'include')
-    assert.equal(calls[0].body, body === undefined ? undefined : JSON.stringify(body))
+    assert.equal(calls[0].withCredentials, true)
+    assert.equal(calls[0].withXSRFToken, false)
+    assert.equal(calls[0].data, body === undefined ? undefined : JSON.stringify(body))
   }
 })
 
@@ -50,19 +53,28 @@ test('upload sends the original file as multipart without a manual content type'
   const file = new File(['Synthetic test'], 'test.txt', { type: 'text/plain' })
   await api.uploadChat(wiki.id, file)
   assert.equal(calls[0].url, `${api.API_BASE_URL}/wikis/team%2F42/chats`)
-  assert.equal(calls[0].body.get('file'), file)
-  assert.deepEqual(calls[0].headers, {})
+  assert.equal(calls[0].data.get('file'), file)
+  assert.equal(calls[0].headers.toJSON()['Content-Type'], undefined)
 })
 
 test('API errors preserve status and code, including non-JSON proxy errors', async () => {
   respond({ code: 'CONFLICT', message: '충돌' }, 409)
   await assert.rejects(api.updatePage(wiki.id, page.id, {}), { message: '충돌', status: 409, code: 'CONFLICT' })
-  globalThis.fetch = async () => new Response('<html>Bad Gateway</html>', { status: 502 })
+  mockAxios(async () => new Response('<html>Bad Gateway</html>', { status: 502 }))
   await assert.rejects(api.getWiki(wiki.id), { status: 502, message: 'API 요청에 실패했습니다. (502)' })
-  globalThis.fetch = async () => new Response('invalid')
-  await assert.rejects(api.getWiki(wiki.id), /올바른 JSON/)
-  globalThis.fetch = async () => { throw new TypeError('Failed to fetch') }
-  await assert.rejects(api.getWiki(wiki.id), /Failed to fetch/)
+  for (const body of ['invalid', '', 'null']) {
+    mockAxios(async () => new Response(body))
+    await assert.rejects(api.getWiki(wiki.id), /올바른 JSON/)
+  }
+  mockAxios(async () => { throw new TypeError('Network failure') })
+  await assert.rejects(api.getWiki(wiki.id), /Network failure/)
+})
+
+test('valid JSON response values are preserved regardless of content type', async () => {
+  for (const value of ['text', false, 0, [], { chats: [] }]) {
+    mockAxios(async () => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'text/plain' } }))
+    assert.deepEqual(await api.getChats(wiki.id), value)
+  }
 })
 
 test('wiki list loads remembered IDs, skips locked or deleted wikis and reports server errors', async () => {
@@ -71,13 +83,13 @@ test('wiki list loads remembered IDs, skips locked or deleted wikis and reports 
     const values = new Map([['conversation-wiki:recent-wikis:v1', JSON.stringify(['open', 'locked', 'deleted'])]])
     globalThis.window = { localStorage: { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) } }
     const paths = []
-    globalThis.fetch = async (url) => {
+    mockAxios(async (url) => {
       paths.push(url)
       return url.endsWith('/locked') ? Response.json({}, { status: 401 }) : url.endsWith('/deleted') ? Response.json({}, { status: 404 }) : Response.json({ ...wiki, id: 'open' })
-    }
+    })
     assert.deepEqual(await wikiListLoader(), { wikis: [{ ...wiki, id: 'open' }] })
     assert.ok(paths.every((path) => path.startsWith(`${api.API_BASE_URL}/wikis/`)))
-    globalThis.fetch = async () => Response.json({ message: '서버 오류' }, { status: 500 })
+    mockAxios(async () => Response.json({ message: '서버 오류' }, { status: 500 }))
     await assert.rejects(wikiListLoader(), /서버 오류/)
     values.clear()
     assert.deepEqual(await wikiListLoader(), { wikis: [] })
@@ -106,10 +118,10 @@ function editRequest(content, version = 3) {
 test('section editing preserves other sections and uses the loaded version', async () => {
   const params = { wikiId: wiki.id, pagesId: page.id }
   const writes = []
-  globalThis.fetch = async (url, options) => {
-    if (options.method === 'PATCH') writes.push(JSON.parse(options.body))
+  mockAxios(async (url, options) => {
+    if (options.method === 'PATCH') writes.push(JSON.parse(options.data))
     return Response.json(url.endsWith('/pages/page%2F1') ? page : wiki)
-  }
+  })
   const loaded = await pageEditLoader({ params, request: editRequest('') })
   assert.equal(loaded.editContent, '## 개요\r\n원본\r\n')
   const response = await pageEditAction({ params, request: editRequest('## 새 제목\n수정') })
@@ -117,7 +129,7 @@ test('section editing preserves other sections and uses the loaded version', asy
   assert.deepEqual(writes, [{ content: '소개\r\n## 새 제목\n수정\n## 일정\r\n유지\r\n', version: 3 }])
   assert.match((await pageEditAction({ params, request: editRequest('## 변경\n내용', 2) })).error, /다른 사용자/)
   assert.equal(writes.length, 1)
-  globalThis.fetch = async () => Response.json({ message: '저장 실패' }, { status: 500 })
+  mockAxios(async () => Response.json({ message: '저장 실패' }, { status: 500 }))
   assert.equal((await pageEditAction({ params, request: editRequest('## 변경\n내용') })).error, '저장 실패')
 })
 
@@ -127,11 +139,11 @@ test('upload action authenticates before upload and generation; invalid files se
   form.set('password', 'test-password')
   form.set('chat', new File(['Synthetic integration test'], 'test.txt'))
   const methods = []
-  globalThis.fetch = async (url, options) => {
+  mockAxios(async (url, options) => {
     methods.push(`${options.method} ${url}`)
     if (url.endsWith('/unlock')) return new Response(null, { status: 204 })
     return Response.json(url.endsWith('/generations') ? { jobId: 'job' } : url.endsWith('/chats') ? { id: 'chat' } : { id: 'created' })
-  }
+  })
   const submit = () => uploadAction({ request: new Request('http://localhost/', { method: 'POST', body: form }) })
   assert.equal((await submit()).headers.get('Location'), '/wiki/created/generations/job')
   assert.deepEqual(methods.map(value => value.replace(api.API_BASE_URL, '')), ['POST /wikis', 'POST /wikis/created/unlock', 'POST /wikis/created/chats', 'POST /wikis/created/generations'])

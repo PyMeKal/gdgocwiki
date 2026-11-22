@@ -1,3 +1,5 @@
+import axios from 'axios'
+import { mockAxios } from './helpers/mockAxios.js'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
@@ -10,7 +12,7 @@ import { parseWikiData } from '../src/utils/importWiki.js'
 
 test('routes render API data, navigation, errors and safe documents', async (t) => {
   const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom' })
-  const originalFetch = globalThis.fetch
+  const originalAdapter = axios.defaults.adapter
   const originalWindow = globalThis.window
   const wiki = { id: 'team-42', name: '테스트 위키', hasPassword: false }
   const page = { id: 'page-17', title: '테스트 문서', category: 'EVENT', content: '## 개요\n본문[* 주석]\n## 일정\n일정 본문', version: 3, updatedAt: '2026-11-20T00:00:00Z' }
@@ -18,7 +20,7 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
   globalThis.window = { localStorage: { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) } }
   let status = 200
   let jobStatus = 'COMPLETED'
-  globalThis.fetch = async (url) => {
+  mockAxios(async (url) => {
     const path = new URL(url, 'http://localhost').pathname.replace(/^\/api/, '')
     if (status !== 200) return Response.json({ message: '조회 실패' }, { status })
     if (path.includes('/generations/')) return Response.json({ status: jobStatus, createdPages: 1, updatedPages: 0 })
@@ -26,7 +28,7 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
     if (path.endsWith('/pages')) return Response.json({ pages: [{ id: page.id, title: page.title, category: page.category }] })
     if (path === '/wikis/team-42') return Response.json(wiki)
     throw new Error(`Unexpected API request: ${path}`)
-  }
+  })
   try {
     const { routes } = await server.ssrLoadModule('/src/routes.jsx')
     async function renderPage(path) {
@@ -161,7 +163,7 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
       assert.doesNotMatch(minimalHtml, /class="toc"|wiki-infobox|참고 자료/)
     })
   } finally {
-    globalThis.fetch = originalFetch
+    axios.defaults.adapter = originalAdapter
     if (originalWindow === undefined) delete globalThis.window
     else globalThis.window = originalWindow
     await server.close()
