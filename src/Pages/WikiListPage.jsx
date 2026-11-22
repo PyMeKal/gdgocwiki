@@ -28,7 +28,7 @@ export default function WikiListPage() {
               </li>
             ))}
           </ul>
-        ) : <p className="empty-results">아직 접근할 수 있는 위키가 없습니다. 새 위키를 만들어 대화를 모아보세요.</p>}
+        ) : <p className="empty-results">아직 이 브라우저에 기록된 접근 가능한 위키가 없습니다. 새 위키를 만들어 대화를 모아보세요.</p>}
       </main>
     </>
   )
