@@ -1,33 +1,44 @@
 import axios from 'axios'
+import { logApiResult } from './logApiResult.js'
 import { rememberWiki } from '../utils/recentWikis.js'
 
 export const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
 
 async function request(path, { method = 'GET', body } = {}) {
   const isForm = body instanceof FormData
-  const response = await axios.request({
-    url: `${API_BASE_URL}${path}`,
-    method,
-    withCredentials: true,
-    withXSRFToken: false,
-    headers: { 'Content-Type': body !== undefined && !isForm ? 'application/json' : false },
-    data: body === undefined || isForm ? body : JSON.stringify(body),
-    // 기존처럼 JSON 형식과 HTTP 오류를 아래에서 처리합니다.
-    responseType: 'text',
-    transformResponse: [(data) => data],
-    validateStatus: () => true,
-  })
-  if (response.status === 204) return undefined
-  let data = null
-  try { data = JSON.parse(response.data) } catch { /* JSON이 아닌 응답도 기존 오류 처리로 전달합니다. */ }
-  if (response.status < 200 || response.status >= 300) {
-    const error = new Error(data?.message || `API 요청에 실패했습니다. (${response.status})`)
-    error.status = response.status
-    error.code = data?.code
+  let status
+  try {
+    const response = await axios.request({
+      url: `${API_BASE_URL}${path}`,
+      method,
+      withCredentials: true,
+      withXSRFToken: false,
+      headers: { 'Content-Type': body !== undefined && !isForm ? 'application/json' : false },
+      data: body === undefined || isForm ? body : JSON.stringify(body),
+      // 기존처럼 JSON 형식과 HTTP 오류를 아래에서 처리합니다.
+      responseType: 'text',
+      transformResponse: [(data) => data],
+      validateStatus: () => true,
+    })
+    status = response.status
+    let data
+    if (status !== 204) {
+      data = null
+      try { data = JSON.parse(response.data) } catch { /* JSON이 아닌 응답도 기존 오류 처리로 전달합니다. */ }
+      if (status < 200 || status >= 300) {
+        const error = new Error(data?.message || `API 요청에 실패했습니다. (${status})`)
+        error.status = status
+        error.code = data?.code
+        throw error
+      }
+      if (data === null) throw new Error('API 응답이 올바른 JSON이 아닙니다.')
+    }
+    logApiResult({ method, path, status, success: true })
+    return data
+  } catch (error) {
+    logApiResult({ method, path, status, success: false })
     throw error
   }
-  if (data === null) throw new Error('API 응답이 올바른 JSON이 아닙니다.')
-  return data
 }
 
 const wikiPath = (wikiId) => `/wikis/${encodeURIComponent(wikiId)}`

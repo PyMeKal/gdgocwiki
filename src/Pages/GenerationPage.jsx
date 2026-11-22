@@ -1,3 +1,4 @@
+import Skeleton from 'react-loading-skeleton'
 import { useEffect } from 'react'
 import { useLoaderData, useParams, useRevalidator } from 'react-router'
 import CopyWikiUrlButton from '../components/CopyWikiUrlButton.jsx'
@@ -5,11 +6,12 @@ import Breadcrumb from '../components/Breadcrumb.jsx'
 import ButtonLink from '../components/ButtonLink.jsx'
 import { wikiPath } from '../utils/paths.js'
 
-export default function GenerationPage() {
-  const job = useLoaderData()
+export default function GenerationPage({ loading = false, mainId = 'main' }) {
+  const data = useLoaderData()
+  const job = loading ? undefined : data
   const { wikiId } = useParams()
   const revalidator = useRevalidator()
-  const pending = ['PENDING', 'PROCESSING'].includes(job.status)
+  const pending = !loading && ['PENDING', 'PROCESSING'].includes(job.status)
   useEffect(() => {
     if (!pending || revalidator.state !== 'idle') return
     const timer = setTimeout(() => revalidator.revalidate(), 1000)
@@ -17,15 +19,15 @@ export default function GenerationPage() {
   }, [pending, revalidator, job])
 
   return (
-    <main id="main" className="container form-page">
+    <main id={mainId} className="container form-page" aria-busy={loading}>
       <title>위키 제작 · 대화위키</title>
       <Breadcrumb>위키 제작</Breadcrumb>
-      <section className="panel" aria-busy={pending}>
-        <h1>{job.status === 'COMPLETED' ? '다 제작되었습니다!' : job.status === 'FAILED' ? '문서를 만들지 못했습니다.' : '위키를 만들고 있습니다…'}</h1>
-        <p role="status">{job.status === 'PENDING' ? '대화를 접수했습니다. 변환을 준비하고 있습니다.' : job.status === 'PROCESSING' ? '대화를 JSON으로 변환하고 문서를 준비하고 있습니다. 잠시 기다려주세요.' : job.status === 'COMPLETED' ? `문서 ${job.createdPages + job.updatedPages}개를 저장했습니다.` : '대화 파일을 확인한 뒤 다시 제출해주세요.'}</p>
+      <section className="panel" aria-busy={loading || pending}>
+        <h1>{loading ? <Skeleton width="65%" /> : job.status === 'COMPLETED' ? '다 제작되었습니다!' : job.status === 'FAILED' ? '문서를 만들지 못했습니다.' : '위키를 만들고 있습니다…'}</h1>
+        <p role="status">{loading ? <Skeleton count={2} /> : job.status === 'PENDING' ? '대화를 접수했습니다. 변환을 준비하고 있습니다.' : job.status === 'PROCESSING' ? '대화를 JSON으로 변환하고 문서를 준비하고 있습니다. 잠시 기다려주세요.' : job.status === 'COMPLETED' ? `문서 ${job.createdPages + job.updatedPages}개를 저장했습니다.` : '대화 파일을 확인한 뒤 다시 제출해주세요.'}</p>
         <div className="actions">
-          {job.status === 'COMPLETED' && <><ButtonLink to={wikiPath(wikiId)} primary>위키로 이동</ButtonLink><CopyWikiUrlButton wikiId={wikiId} /></>}
-          {job.status === 'FAILED' && <ButtonLink to="/form">대화 다시 올리기</ButtonLink>}
+          {job?.status === 'COMPLETED' && <><ButtonLink to={wikiPath(wikiId)} primary>위키로 이동</ButtonLink><CopyWikiUrlButton wikiId={wikiId} /></>}
+          {job?.status === 'FAILED' && <ButtonLink to="/form">대화 다시 올리기</ButtonLink>}
         </div>
       </section>
     </main>

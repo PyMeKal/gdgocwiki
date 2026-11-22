@@ -1,0 +1,56 @@
+/* 공통 색상 팔레트: 기존 색상값을 유지하며 이 파일에서만 관리합니다. */
+:root {
+  /* 기본 테마 */
+  --color-white: white;
+  --color-transparent: transparent;
+  --color-text: #262238;
+  --color-background: #faf9fd;
+  --color-primary: #a79be6;
+  --color-primary-hover: #998bdc;
+  --color-accent: #6754ac;
+  --color-border: #e8e4ef;
+  --color-muted: #777182;
+  --color-text-secondary: #706c7b;
+  --color-surface-muted: #f4f2f7;
+  --color-surface-accent: #f0ecfa;
+  --color-upload-background: #faf9fe;
+  --color-border-accent: #c6bdeb;
+  --color-badge-background: #c6bdee;
+  --color-article-accent: #6550ad;
+  --color-article-border: #dcd9e3;
+  --color-article-button-background: #eee9f8;
+  --color-article-toc-background: #f6f5f8;
+  --color-article-table-background: #f2effa;
+  /* 상태 및 공통 문서 요소 */
+  --color-error: #a32929;
+  --color-focus: #a57921;
+  --color-control-text: #33483c;
+  --color-control-hover: #f4f7f4;
+  --color-disabled-background: #e2e7e3;
+  --color-disabled-text: #68746c;
+  --color-placeholder: #778279;
+  --color-file-button-border: #bccac0;
+  --color-preview-background: #fafcf9;
+  --color-help-text: #536359;
+  --color-tooltip-text: #26332e;
+  --color-tooltip-shadow: #26332e26;
+  --color-footnote-target: #fff5e9;
+  --color-category-separator: #b0bab3;
+  --color-document-background: #fdfefd;
+  --color-document-heading-border: #cdd7cf;
+  --color-document-table-border: #d5ded7;
+  --color-document-table-label: #375c46;
+  /* 기존 녹색 계열 스타일 */
+  --color-green-background: #f5f6f5;
+  --color-green-border: #dce3de;
+  --color-green-muted: #65736b;
+  --color-green-nav-border: #d7eadf;
+  --color-green-surface: #edf3ee;
+  --color-green-primary-hover: #205f4c;
+  --color-green-tag-border: #c9ded0;
+  --color-green-tag-background: #f0f6f1;
+  --color-green-input-border: #c8d1ca;
+  --color-green-upload-border: #aabbad;
+  --color-green-notice-border: #a7c4af;
+  --color-green-notice-background: #f2f6f2;
+}

@@ -1,19 +1,21 @@
+@import './colors.css';
+
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
-  color: #26332e;
-  background: #f5f6f5;
+  color: var(--color-tooltip-text);
+  background: var(--color-green-background);
   font-size: 15px;
   line-height: 1.75;
-  --green: #A79BE6;
-  --border: #dce3de;
-  --muted: #65736b;
+  --green: var(--color-primary);
+  --border: var(--color-green-border);
+  --muted: var(--color-green-muted);
 }
 
 * { box-sizing: border-box; }
 body { margin: 0; }
 a { color: var(--green); text-decoration: none; }
 a:hover { text-decoration: underline; }
-a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #a57921; outline-offset: 4px; }
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 4px; }
 h1, h2, h3, p { margin: 0; }
 h1 { font-size: 32px; line-height: 1.45; letter-spacing: -1px; }
 h2 { font-size: 20px; line-height: 1.5; }
@@ -23,63 +25,63 @@ h3 { font-size: 17px; }
 .container { max-width: 1100px; width: calc(100% - 48px); margin: 0 auto; }
 .site-header { background: var(--green); }
 .nav-inner { max-width: 1100px; min-height: 64px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 52px; }
-.nav-inner a { color: white; }
+.nav-inner a { color: var(--color-white); }
 .brand { font-size: 23px; font-weight: 750; letter-spacing: -1px; white-space: nowrap; }
 .nav-links { display: flex; align-self: stretch; gap: 28px; }
-.nav-links a { display: flex; align-items: center; border-bottom: 3px solid transparent; padding-top: 3px; font-size: 14px; }
-.nav-links a[aria-current="page"] { border-bottom-color: #d7eadf; font-weight: 700; }
+.nav-links a { display: flex; align-items: center; border-bottom: 3px solid var(--color-transparent); padding-top: 3px; font-size: 14px; }
+.nav-links a[aria-current="page"] { border-bottom-color: var(--color-green-nav-border); font-weight: 700; }
 .site-footer { max-width: 1100px; margin: 52px auto 0; padding: 22px 24px; border-top: 1px solid var(--border); color: var(--muted); text-align: center; font-size: 12px; }
 .site-footer span { padding: 0 8px; }
 .home { padding-top: 48px; }
-.welcome { background: #edf3ee; border: 1px solid var(--border); padding: 48px; }
+.welcome { background: var(--color-green-surface); border: 1px solid var(--border); padding: 48px; }
 .eyebrow { color: var(--green); font-size: 13px; font-weight: 600; margin-bottom: 12px; }
 .intro { color: var(--muted); margin-top: 14px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
-.button { display: inline-flex; align-items: center; justify-content: center; gap: 24px; padding: 10px 20px; border: 1px solid var(--border); border-radius: 4px; background: white; color: #33483c; font: inherit; font-size: 14px; font-weight: 600; }
-.button:hover { background: #f4f7f4; text-decoration: none; }
-.primary { background: var(--green); border-color: var(--green); color: white; }
-.primary:hover { background: #205f4c; }
-.button:disabled { background: #e2e7e3; border-color: #e2e7e3; color: #68746c; cursor: not-allowed; }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 24px; padding: 10px 20px; border: 1px solid var(--border); border-radius: 4px; background: var(--color-white); color: var(--color-control-text); font: inherit; font-size: 14px; font-weight: 600; }
+.button:hover { background: var(--color-control-hover); text-decoration: none; }
+.primary { background: var(--green); border-color: var(--green); color: var(--color-white); }
+.primary:hover { background: var(--color-green-primary-hover); }
+.button:disabled { background: var(--color-disabled-background); border-color: var(--color-disabled-background); color: var(--color-disabled-text); cursor: not-allowed; }
 .home-section { margin-top: 36px; }
-.steps { display: grid; grid-template-columns: repeat(3, 1fr); list-style: none; padding: 0; margin: 18px 0 0; border: 1px solid var(--border); background: white; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); list-style: none; padding: 0; margin: 18px 0 0; border: 1px solid var(--border); background: var(--color-white); }
 .steps li { padding: 24px; }
 .steps li + li { border-left: 1px solid var(--border); }
 .step-number { color: var(--green); font-size: 12px; font-weight: 700; }
 .steps h3 { margin: 8px 0; }
 .steps p, .example-link p { color: var(--muted); font-size: 14px; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-.example-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: white; padding: 24px; border: 1px solid var(--border); color: inherit; }
+.example-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--color-white); padding: 24px; border: 1px solid var(--border); color: inherit; }
 .example-link:hover { border-color: var(--green); text-decoration: none; }
 .example-link h3 { margin: 8px 0 4px; }
 .example-arrow { color: var(--green); font-size: 24px; }
-.tag { display: inline-block; border: 1px solid #c9ded0; color: var(--green); border-radius: 3px; background: #f0f6f1; padding: 1px 8px; font-size: 12px; }
+.tag { display: inline-block; border: 1px solid var(--color-green-tag-border); color: var(--green); border-radius: 3px; background: var(--color-green-tag-background); padding: 1px 8px; font-size: 12px; }
 .form-page { max-width: 780px; padding-top: 28px; }
 .breadcrumb { color: var(--muted); font-size: 12px; margin-bottom: 22px; }
 .breadcrumb a { margin-right: 8px; }
-.panel { margin-top: 28px; background: white; border: 1px solid var(--border); padding: 32px; }
+.panel { margin-top: 28px; background: var(--color-white); border: 1px solid var(--border); padding: 32px; }
 .panel > .muted { font-size: 14px; margin-top: 8px; }
 .field { margin-top: 26px; }
 .field label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
 input, textarea { font: inherit; max-width: 100%; }
-input[type="text"], textarea { width: 100%; border: 1px solid #c8d1ca; border-radius: 3px; padding: 11px 12px; color: inherit; background: white; }
+input[type="text"], textarea { width: 100%; border: 1px solid var(--color-green-input-border); border-radius: 3px; padding: 11px 12px; color: inherit; background: var(--color-white); }
 textarea { display: block; resize: vertical; }
-input::placeholder { color: #778279; }
-.upload-area { border: 1px dashed #aabbad; background: #fafcf9; padding: 24px; }
+input::placeholder { color: var(--color-placeholder); }
+.upload-area { border: 1px dashed var(--color-green-upload-border); background: var(--color-preview-background); padding: 24px; }
 .upload-area > p:first-child { margin-bottom: 16px; font-size: 14px; }
 input[type="file"] { display: block; width: 100%; font-size: 13px; }
-input[type="file"]::file-selector-button { border: 1px solid #bccac0; border-radius: 3px; background: white; color: #33483c; padding: 8px 14px; margin-right: 12px; cursor: pointer; }
+input[type="file"]::file-selector-button { border: 1px solid var(--color-file-button-border); border-radius: 3px; background: var(--color-white); color: var(--color-control-text); padding: 8px 14px; margin-right: 12px; cursor: pointer; }
 .file-help, .upload-status:not(:empty), .uploaded-file, .upload-error { margin-top: 12px; }
 .uploaded-file { overflow-wrap: anywhere; font-size: 14px; }
 .upload-area .button { margin-top: 12px; }
-.upload-error { color: #a32929; }
+.upload-error { color: var(--color-error); }
 .chat-preview { margin-top: 26px; }
-.chat-preview pre { max-height: 300px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #fafcf9; border: 1px solid var(--border); padding: 16px; font: inherit; font-size: 13px; }
-.notice { margin-top: 24px; border-left: 3px solid #a7c4af; background: #f2f6f2; color: #536359; padding: 12px 16px; font-size: 13px; }
+.chat-preview pre { max-height: 300px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--color-preview-background); border: 1px solid var(--border); padding: 16px; font: inherit; font-size: 13px; }
+.notice { margin-top: 24px; border-left: 3px solid var(--color-green-notice-border); background: var(--color-green-notice-background); color: var(--color-help-text); padding: 12px 16px; font-size: 13px; }
 .help-box { margin-top: 24px; padding: 0 4px; }
 .help-box h2 { font-size: 16px; }
-.help-box ol { padding-left: 21px; color: #536359; font-size: 14px; }
+.help-box ol { padding-left: 21px; color: var(--color-help-text); font-size: 14px; }
 .wiki-layout { display: grid; grid-template-columns: minmax(0, 1fr) 210px; align-items: start; gap: 24px; padding-top: 28px; }
-.wiki-article { min-width: 0; background: white; border: 1px solid var(--border); padding: 32px; }
+.wiki-article { min-width: 0; background: var(--color-white); border: 1px solid var(--border); padding: 32px; }
 .article-header h1 { margin: 10px 0 6px; }
 .article-title-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 .article-title-row .button { flex-shrink: 0; }
@@ -88,28 +90,28 @@ input[type="file"]::file-selector-button { border: 1px solid #bccac0; border-rad
 .wiki-section > * + * { margin-top: 18px; }
 .footnote-reference { font-size: 11px; font-weight: 400; line-height: 1; white-space: normal; }
 .footnote-reference > a { padding: 3px; }
-.footnote-tooltip { position: fixed; inset: auto; margin: 0; max-height: calc(50dvh - 24px); overflow: auto; padding: 12px 16px; border: 1px solid var(--border); border-radius: 6px; background: white; color: #26332e; box-shadow: 0 4px 16px #26332e26; font: inherit; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.footnote-tooltip { position: fixed; inset: auto; margin: 0; max-height: calc(50dvh - 24px); overflow: auto; padding: 12px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--color-white); color: var(--color-tooltip-text); box-shadow: 0 4px 16px var(--color-tooltip-shadow); font: inherit; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
 .footnotes { clear: both; border-top: 1px solid var(--border); margin-top: 36px; padding-top: 20px; font-size: 13px; }
 .footnotes h2 { font-size: 17px; }
 .footnotes ol { list-style: none; padding: 0; }
 .footnotes li { margin-top: 8px; scroll-margin-top: 24px; overflow-wrap: anywhere; white-space: pre-wrap; }
-.footnotes li:target { background: #fff5e9; }
-.editor-save { margin-top: 28px; padding: 24px; background: white; border: 1px solid var(--border); }
+.footnotes li:target { background: var(--color-footnote-target); }
+.editor-save { margin-top: 28px; padding: 24px; background: var(--color-white); border: 1px solid var(--border); }
 .editor-save .actions { margin-top: 12px; }
 .category { margin-top: 24px; padding: 7px 12px; border: 1px solid var(--border); font-size: 12px; }
-.category span { padding: 0 6px; color: #b0bab3; }
-.toc { display: table; max-width: 100%; margin-top: 24px; padding: 16px 24px; border: 1px solid var(--border); background: #fdfefd; }
+.category span { padding: 0 6px; color: var(--color-category-separator); }
+.toc { display: table; max-width: 100%; margin-top: 24px; padding: 16px 24px; border: 1px solid var(--border); background: var(--color-document-background); }
 .toc h2 { font-size: 17px; }
 .toc ol { list-style: none; margin: 8px 0 0; padding-left: 0; font-size: 14px; }
 .toc ol ol { padding-left: 20px; }
 .toc li { padding-left: 4px; }
 .wiki-section { margin-top: 32px; scroll-margin-top: 24px; }
-.wiki-section-heading { font-size: 23px; border-bottom: 1px solid #cdd7cf; padding-bottom: 7px; margin-bottom: 18px; overflow-wrap: anywhere; }
+.wiki-section-heading { font-size: 23px; border-bottom: 1px solid var(--color-document-heading-border); padding-bottom: 7px; margin-bottom: 18px; overflow-wrap: anywhere; }
 .section-edit { margin-left: 12px; vertical-align: middle; font-size: 13px; font-weight: 400; }
 .wiki-section .wiki-section .wiki-section-heading { font-size: 20px; }
 /* 정보 표는 DOM에서 본문 앞에 두고, right 배치일 때만 데스크톱에서 옆으로 띄웁니다. */
-.wiki-infobox { max-width: 100%; margin-top: 24px; border: 1px solid var(--border); background: #fdfefd; overflow-wrap: anywhere; }
-.wiki-infobox h2 { padding: 14px 16px; font-size: 18px; background: #edf3ee; }
+.wiki-infobox { max-width: 100%; margin-top: 24px; border: 1px solid var(--border); background: var(--color-document-background); overflow-wrap: anywhere; }
+.wiki-infobox h2 { padding: 14px 16px; font-size: 18px; background: var(--color-green-surface); }
 .wiki-infobox th { width: 32%; }
 .infobox-right { float: right; width: min(320px, 45%); margin: 24px 0 20px 24px; }
 .wiki-sections { display: flow-root; min-width: 0; }
@@ -120,17 +122,17 @@ input[type="file"]::file-selector-button { border: 1px solid #bccac0; border-rad
 .section-number { margin-right: 6px; font-weight: 400; }
 .wiki-section p, .content-list { font-size: 14px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { border: 1px solid #d5ded7; padding: 10px 12px; text-align: left; }
-th { background: #edf3ee; font-weight: 600; }
+th, td { border: 1px solid var(--color-document-table-border); padding: 10px 12px; text-align: left; }
+th { background: var(--color-green-surface); font-weight: 600; }
 .info-table { margin-top: 18px; }
-.info-table th { width: 110px; white-space: nowrap; color: #375c46; }
+.info-table th { width: 110px; white-space: nowrap; color: var(--color-document-table-label); }
 .table-scroll { overflow-x: auto; }
 .schedule-table { min-width: 500px; }
 .schedule-table th:first-child { width: 116px; }
 .content-list { padding-left: 20px; }
 .content-list li + li { margin-top: 8px; }
 .article-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; border-top: 1px solid var(--border); margin-top: 36px; padding-top: 20px; font-size: 13px; }
-.sidebar-box { background: white; border: 1px solid var(--border); padding: 20px; }
+.sidebar-box { background: var(--color-white); border: 1px solid var(--border); padding: 20px; }
 .sidebar-box h2 { font-size: 16px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
 .sidebar-box p { font-size: 14px; color: var(--muted); }
 .sidebar-box dl { margin: 20px 0; font-size: 13px; }
@@ -138,7 +140,7 @@ th { background: #edf3ee; font-weight: 600; }
 .sidebar-box dd { margin: 0 0 10px; }
 .sidebar-box > a, .back-home { font-size: 13px; }
 .back-home { display: inline-block; margin: 16px 4px; }
-.skip-link { position: absolute; left: 16px; top: -100px; background: white; padding: 8px 16px; z-index: 1; }
+.skip-link { position: absolute; left: 16px; top: -100px; background: var(--color-white); padding: 8px 16px; z-index: 1; }
 .skip-link:focus { top: 8px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
@@ -174,78 +176,78 @@ th { background: #edf3ee; font-weight: 600; }
 .article-title-row h1 { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .wiki-share { position: relative; display: inline-flex; flex-shrink: 0; }
 .share-icon-button { padding: 10px; }
-.wiki-share-status { position: absolute; top: calc(100% + 8px); right: 0; z-index: 2; width: max-content; max-width: min(280px, 80vw); padding: 10px 12px; border: 1px solid var(--border); border-radius: 4px; background: white; color: #33483c; font-size: 14px; }
+.wiki-share-status { position: absolute; top: calc(100% + 8px); right: 0; z-index: 2; width: max-content; max-width: min(280px, 80vw); padding: 10px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--color-white); color: var(--color-control-text); font-size: 14px; }
 .wiki-share-status input { margin-top: 8px; }
 
 .actions .wiki-share-status { left: 0; right: auto; max-width: min(240px, 65vw); }
 
 /* WikiTalk */
-:root { color: #262238; background: #faf9fd; line-height: 1.55; --green: #6754ac; --border: #e8e4ef; --muted: #777182; }
+:root { color: var(--color-text); background: var(--color-background); line-height: 1.55; --green: var(--color-accent); --border: var(--color-border); --muted: var(--color-muted); }
 body { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
-a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline-color: #6754ac; }
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline-color: var(--color-accent); }
 button, select { font: inherit; cursor: pointer; }
 .container { max-width: 1056px; }
-.site-header { background: transparent; }
+.site-header { background: var(--color-transparent); }
 .nav-inner { max-width: 1056px; min-height: 86px; padding: 24px 0 20px; width: calc(100% - 48px); justify-content: space-between; }
-.nav-inner .brand { display: flex; align-items: center; gap: 9px; color: #262238; font-size: 22px; font-weight: 600; letter-spacing: 0; }
+.nav-inner .brand { display: flex; align-items: center; gap: 9px; color: var(--color-text); font-size: 22px; font-weight: 600; letter-spacing: 0; }
 .brand img { display: block; }
 .menu-symbol { display: flex; padding: 10px; border: 1px solid var(--border); border-radius: 12px; }
-.bottom-navigation { position: fixed; inset: auto 0 0; z-index: 10; background: white; border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
+.bottom-navigation { position: fixed; inset: auto 0 0; z-index: 10; background: var(--color-white); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
 .bottom-navigation-inner { display: flex; justify-content: space-between; max-width: 780px; margin: auto; padding: 15px 24px 20px; }
 .bottom-navigation a, .bottom-navigation button { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 48px; color: var(--muted); font: inherit; font-size: 10px; line-height: 1.2; background: none; border: 0; padding: 0; }
-.bottom-navigation a[aria-current] { color: #6754ac; font-weight: 600; }
+.bottom-navigation a[aria-current] { color: var(--color-accent); font-weight: 600; }
 .bottom-navigation button { cursor: default; }
-.button { border-radius: 9px; color: #262238; }
-.primary { background: #a79be6; border-color: #a79be6; color: #262238; }
-.primary:hover { background: #998bdc; }
+.button { border-radius: 9px; color: var(--color-text); }
+.primary { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-text); }
+.primary:hover { background: var(--color-primary-hover); }
 .panel { border-radius: 22px; }
 .form-page { padding-top: 14px; }
-input[type="text"], input[type="password"], textarea, select { border: 1px solid var(--border); border-radius: 9px; padding: 12px; color: inherit; background: white; max-width: 100%; }
+input[type="text"], input[type="password"], textarea, select { border: 1px solid var(--border); border-radius: 9px; padding: 12px; color: inherit; background: var(--color-white); max-width: 100%; }
 input[type="password"] { width: 100%; }
-.notice { background: #f4f2f7; border-color: #c6bdeb; color: #777182; }
+.notice { background: var(--color-surface-muted); border-color: var(--color-border-accent); color: var(--color-muted); }
 .import-page { max-width: 780px; }
 .import-intro .eyebrow { font-size: 10px; margin-bottom: 13px; }
 .import-intro h1 { font-size: 38px; font-weight: 600; letter-spacing: -1.52px; line-height: 1.1; }
 .import-intro .intro { font-size: 14px; line-height: 1.45; margin: 13px 0 28px; max-width: 420px; }
 .import-page > .panel { margin-top: 0; padding: 18px; }
 .import-page .panel > h2 { display: flex; gap: 9px; align-items: center; font-size: 16px; }
-.import-page .step-number { background: #f0ecfa; padding: 5px; border-radius: 6px; color: #6754ac; font-size: 11px; }
+.import-page .step-number { background: var(--color-surface-accent); padding: 5px; border-radius: 6px; color: var(--color-accent); font-size: 11px; }
 .import-page .field { margin-top: 18px; }
 .import-page .field label { font-size: 11px; margin-bottom: 7px; }
 .import-page .field input { font-size: 13px; }
-.chat-upload .upload-label { background: #f4f2f7; border: 4px solid #f4f2f7; border-radius: 10px; padding: 9px; text-align: center; }
-.upload-area { border: 1px dashed #c6bdeb; border-radius: 14px; background: #faf9fe; padding: 20px; text-align: center; margin-top: 18px; }
+.chat-upload .upload-label { background: var(--color-surface-muted); border: 4px solid var(--color-surface-muted); border-radius: 10px; padding: 9px; text-align: center; }
+.upload-area { border: 1px dashed var(--color-border-accent); border-radius: 14px; background: var(--color-upload-background); padding: 20px; text-align: center; margin-top: 18px; }
 .upload-icon { display: block; margin: 0 auto 8px; }
 .upload-area > p { margin-top: 8px; }
 .upload-area > p:first-of-type { font-size: 14px; font-weight: 600; }
 .upload-area .small { font-size: 10px; }
 .upload-area input { margin-top: 12px; }
-.uploaded-file { display: flex; gap: 10px; align-items: center; text-align: left; background: #f0ecfa; padding: 12px; border-radius: 10px; }
+.uploaded-file { display: flex; gap: 10px; align-items: center; text-align: left; background: var(--color-surface-accent); padding: 12px; border-radius: 10px; }
 .uploaded-file img { flex-shrink: 0; }
 .import-page .panel > .actions .primary { width: 100%; min-height: 50px; font-size: 14px; gap: 10px; border-radius: 12px; }
 .privacy-note { display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); margin: 13px 0 26px; }
 .recent-wiki h2 { font-size: 13px; margin-bottom: 12px; }
-.recent-wiki-card { display: flex; gap: 12px; align-items: center; padding: 15px; border: 1px solid var(--border); border-radius: 14px; background: white; color: inherit; font-size: 13px; }
+.recent-wiki-card { display: flex; gap: 12px; align-items: center; padding: 15px; border: 1px solid var(--border); border-radius: 14px; background: var(--color-white); color: inherit; font-size: 13px; }
 .recent-wiki-card > span:nth-child(2) { flex: 1; min-width: 0; }
 .recent-wiki-card small { display: block; font-size: 10px; color: var(--muted); margin-top: 4px; }
-.recent-wiki-icon { display: flex; padding: 11px; border-radius: 11px; background: #f0ecfa; }
+.recent-wiki-icon { display: flex; padding: 11px; border-radius: 11px; background: var(--color-surface-accent); }
 .help-box { margin-top: 28px; }
 .wiki-home-page { max-width: 780px; padding-top: 4px; }
 .overview-label { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; margin-bottom: 18px; }
-.wiki-overview { background: #a79be6; padding: 22px; border-radius: 22px; margin-bottom: 22px; }
+.wiki-overview { background: var(--color-primary); padding: 22px; border-radius: 22px; margin-bottom: 22px; }
 .wiki-overview .section-heading { margin: 0 0 14px; }
-.wiki-visibility { font-size: 9px; font-weight: 600; background: #c6bdee; padding: 5px 9px; border-radius: 6px; }
+.wiki-visibility { font-size: 9px; font-weight: 600; background: var(--color-badge-background); padding: 5px 9px; border-radius: 6px; }
 .wiki-overview h1 { font-size: 34px; font-weight: 600; letter-spacing: -1.02px; line-height: 1.1; overflow-wrap: anywhere; }
 .wiki-overview > p { font-size: 12px; margin-top: 14px; }
-.wiki-overview .share-icon-button { border: 0; background: transparent; padding: 0; }
+.wiki-overview .share-icon-button { border: 0; background: var(--color-transparent); padding: 0; }
 .wiki-statistics { display: flex; gap: 64px; margin-top: 21px; }
 .wiki-statistics strong { display: block; font-size: 21px; }
 .wiki-statistics span { display: block; font-size: 10px; }
-.wiki-search { display: flex; align-items: center; gap: 10px; padding: 13px; background: white; border: 1px solid var(--border); border-radius: 11px; }
+.wiki-search { display: flex; align-items: center; gap: 10px; padding: 13px; background: var(--color-white); border: 1px solid var(--border); border-radius: 11px; }
 .wiki-search input { min-width: 0; width: 100%; border: 0; background: none; color: inherit; font-size: 12px; }
 .article-categories { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0 22px; }
-.article-categories button { background: white; border: 1px solid var(--border); color: var(--muted); font-size: 10px; font-weight: 500; line-height: 1.45; border-radius: 20px; padding: 8px 12px; overflow-wrap: anywhere; max-width: 100%; }
-.article-categories button[aria-pressed="true"] { background: #262238; border-color: #262238; color: white; }
+.article-categories button { background: var(--color-white); border: 1px solid var(--border); color: var(--muted); font-size: 10px; font-weight: 500; line-height: 1.45; border-radius: 20px; padding: 8px 12px; overflow-wrap: anywhere; max-width: 100%; }
+.article-categories button[aria-pressed="true"] { background: var(--color-text); border-color: var(--color-text); color: var(--color-white); }
 .wiki-home-page .section-heading h2 { font-size: 15px; }
 .wiki-home-page .section-heading .small { font-size: 10px; }
 .sort-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0 12px; }
@@ -253,38 +255,38 @@ input[type="password"] { width: 100%; }
 .sort-row > span { font-size: 10px; color: var(--muted); }
 .wiki-page-list { list-style: none; margin: 0; padding: 0; }
 .wiki-page-list li { border-bottom: 1px solid var(--border); }
-.wiki-page-list a { display: flex; align-items: center; gap: 12px; padding: 17px 0; color: inherit; min-height: 100px; }
-.article-number { display: flex; justify-content: center; align-items: center; width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; background: #f0ecfa; color: #6754ac; font-size: 10px; }
+.wiki-page-list a, .wiki-page-placeholder { display: flex; align-items: center; gap: 12px; padding: 17px 0; color: inherit; min-height: 100px; }
+.article-number { display: flex; justify-content: center; align-items: center; width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; background: var(--color-surface-accent); color: var(--color-accent); font-size: 10px; }
 .article-summary { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .article-summary strong { font-size: 13px; font-weight: 600; }
-.article-summary small, .article-summary time { display: block; font-size: 10px; color: #6754ac; margin-top: 5px; }
+.article-summary small, .article-summary time { display: block; font-size: 10px; color: var(--color-accent); margin-top: 5px; }
 .empty-results { padding: 24px 0; color: var(--muted); }
-.article-site-header { background: #a79be6; }
+.article-site-header { background: var(--color-primary); }
 .article-site-header .nav-inner { min-height: 70px; padding-top: 14px; padding-bottom: 14px; }
-.article-page { display: block; padding-top: 0; max-width: 100%; width: 100%; background: white; }
+.article-page { display: block; padding-top: 0; max-width: 100%; width: 100%; background: var(--color-white); }
 .article-page .wiki-article { border: 0; max-width: 100%; padding: 0 0 24px; }
 .article-page .wiki-article > :not(.article-search) { max-width: 1008px; margin-left: auto; margin-right: auto; width: calc(100% - 32px); }
-.article-search { display: flex; background: #a79be6; padding: 0 max(16px, calc((100% - 1008px) / 2)) 12px; margin-bottom: 18px; }
-.article-search input { flex: 1; min-width: 0; width: 100%; border: 0; background: white; border-radius: 3px 0 0 3px; padding: 8px 12px; font-size: 12px; }
-.article-search button { background: #eee9f8; border: 0; color: #6550ad; font-size: 11px; padding: 9px 12px; border-radius: 0 3px 3px 0; }
+.article-search { display: flex; background: var(--color-primary); padding: 0 max(16px, calc((100% - 1008px) / 2)) 12px; margin-bottom: 18px; }
+.article-search input { flex: 1; min-width: 0; width: 100%; border: 0; background: var(--color-white); border-radius: 3px 0 0 3px; padding: 8px 12px; font-size: 12px; }
+.article-search button { background: var(--color-article-button-background); border: 0; color: var(--color-article-accent); font-size: 11px; padding: 9px 12px; border-radius: 0 3px 3px 0; }
 .article-page .breadcrumb { font-size: 10px; margin-bottom: 10px; }
 .article-page .article-header h1 { font-size: 27px; letter-spacing: -.54px; line-height: 1.2; margin: 0; }
 .article-page .article-title-row { gap: 10px; }
 .article-page .article-header .button { padding: 8px 12px; font-size: 11px; border-radius: 3px; }
 .article-page .article-header > p { margin-top: 10px; font-size: 12px; }
-.article-page .article-header > .article-modified { margin-top: 10px; font-size: 10px; line-height: 1.55; color: #706c7b; }
+.article-page .article-header > .article-modified { margin-top: 10px; font-size: 10px; line-height: 1.55; color: var(--color-text-secondary); }
 .article-page .wiki-sidebar { display: none; }
-.article-page .toc { display: block; background: #f6f5f8; padding: 14px; border-radius: 3px; margin-top: 22px; }
+.article-page .toc { display: block; background: var(--color-article-toc-background); padding: 14px; border-radius: 3px; margin-top: 22px; }
 .article-page .toc h2 { font-size: 16px; }
 .article-page .toc ol { font-size: 12px; line-height: 1.9; }
-.article-page .wiki-infobox { border: 2px solid #a79be6; float: none; margin-top: 22px; }
-.article-page .wiki-infobox h2 { background: #a79be6; text-align: center; font-size: 16px; }
-.article-page th { background: #f2effa; }
-.article-page th, .article-page td { border-color: #dcd9e3; }
+.article-page .wiki-infobox { border: 2px solid var(--color-primary); float: none; margin-top: 22px; }
+.article-page .wiki-infobox h2 { background: var(--color-primary); text-align: center; font-size: 16px; }
+.article-page th { background: var(--color-article-table-background); }
+.article-page th, .article-page td { border-color: var(--color-article-border); }
 .article-page .wiki-section { margin-top: 22px; }
-.article-page .wiki-section-heading { font-size: 21px; font-weight: 600; border-color: #dcd9e3; padding-bottom: 10px; margin-bottom: 10px; }
-.article-page .section-number { color: #6550ad; }
-.article-page .section-edit { float: right; border: 0; padding: 5px 0; background: transparent; color: #6550ad; font-size: 10px; }
+.article-page .wiki-section-heading { font-size: 21px; font-weight: 600; border-color: var(--color-article-border); padding-bottom: 10px; margin-bottom: 10px; }
+.article-page .section-number { color: var(--color-article-accent); }
+.article-page .section-edit { float: right; border: 0; padding: 5px 0; background: var(--color-transparent); color: var(--color-article-accent); font-size: 10px; }
 .article-page .section-edit::before { content: '['; }
 .article-page .section-edit::after { content: ']'; }
 .article-page .wiki-section .wiki-section-heading { font-size: 21px; }
@@ -310,15 +312,15 @@ input[type="password"] { width: 100%; }
 }
 .import-options { margin-top: 18px; color: var(--muted); font-size: 11px; }
 .import-options summary { cursor: pointer; }
-.import-options .field { color: #262238; }
+.import-options .field { color: var(--color-text); }
 .import-page .upload-area .choose-export { display: block; font-size: 14px; font-weight: 600; margin: 8px 0; cursor: pointer; }
-.upload-area:focus-within { outline: 3px solid #6754ac; outline-offset: 4px; }
-.article-page .category { border-color: #dcd9e3; font-size: 10px; color: #6550ad; }
-.article-tools { display: flex; align-items: stretch; border: 1px solid #dcd9e3; border-radius: 3px; margin-top: 14px; font-size: 11px; }
+.upload-area:focus-within { outline: 3px solid var(--color-accent); outline-offset: 4px; }
+.article-page .category { border-color: var(--color-article-border); font-size: 10px; color: var(--color-article-accent); }
+.article-tools { display: flex; align-items: stretch; border: 1px solid var(--color-article-border); border-radius: 3px; margin-top: 14px; font-size: 11px; }
 .article-tools > span:first-child, .article-tools > a { flex: 1; text-align: center; padding: 8px 12px; }
-.article-tools > span:first-child { background: #f2effa; color: #6550ad; font-weight: 600; }
+.article-tools > span:first-child { background: var(--color-article-table-background); color: var(--color-article-accent); font-weight: 600; }
 .article-tools .wiki-share { align-items: center; }
-.article-page .article-tools .share-icon-button { border: 0; background: transparent; }
+.article-page .article-tools .share-icon-button { border: 0; background: var(--color-transparent); }
 
 .wiki-list-page .wiki-overview h1 { margin-top: 18px; }
 .wiki-list-page .section-heading { gap: 16px; flex-wrap: wrap; }
@@ -327,4 +329,16 @@ input[type="password"] { width: 100%; }
 .wiki-list strong { overflow-wrap: anywhere; }
 @media (min-width: 900px) {
   .wiki-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-skeleton .react-loading-skeleton::after { animation: none; }
+}
+
+.page-skeleton .react-loading-skeleton {
+  --base-color: var(--color-text-secondary);
+  --highlight-color: var(--color-muted);
+}
+.page-skeleton .wiki-overview .react-loading-skeleton {
+  --base-color: var(--color-accent);
+  --highlight-color: var(--color-primary-hover);
 }

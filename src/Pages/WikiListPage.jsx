@@ -1,22 +1,25 @@
+import Skeleton from 'react-loading-skeleton'
 import { Link, useLoaderData } from 'react-router'
 import ButtonLink from '../components/ButtonLink.jsx'
 import { wikiPath } from '../utils/paths.js'
 
-export default function WikiListPage() {
-  const { wikis } = useLoaderData()
+export default function WikiListPage({ loading = false, mainId = 'main' }) {
+  const data = useLoaderData()
+  const { wikis = [] } = loading ? {} : data
+  const titleId = `${mainId}-wikis-title`
   return (
     <>
       <title>My wikis · 대화위키</title>
-      <main id="main" className="container form-page wiki-home-page wiki-list-page">
-        <section className="wiki-overview" aria-labelledby="wikis-title">
+      <main id={mainId} className="container form-page wiki-home-page wiki-list-page" aria-busy={loading}>
+        <section className="wiki-overview" aria-labelledby={titleId}>
           <span className="wiki-visibility">YOUR KNOWLEDGE SPACE</span>
-          <h1 id="wikis-title">My wikis</h1>
+          <h1 id={titleId}>My wikis</h1>
           <p>함께 나눈 대화, 다시 꺼내볼 수 있는 지식으로.</p>
-          <div className="wiki-statistics"><div><strong>{wikis.length}</strong><span>accessible wikis</span></div></div>
+          <div className="wiki-statistics"><div><strong>{loading ? <Skeleton width={30} /> : wikis.length}</strong><span>accessible wikis</span></div></div>
         </section>
         <div className="section-heading"><h2>Your conversations, connected</h2><ButtonLink to="/" primary>새 위키 만들기</ButtonLink></div>
         <p className="muted small">이 브라우저에서 생성하거나 방문한 위키 중 지금 접근할 수 있는 위키를 모았어요.</p>
-        {wikis.length ? (
+        {loading ? <ul className="wiki-list" aria-label="위키 목록 로딩 중">{[0, 1, 2].map((row) => <li key={row}><div className="recent-wiki-card"><span className="recent-wiki-icon"><img src="/design/bookInactive.svg" alt="" /></span><span><strong><Skeleton width={160} /></strong><small><Skeleton width={80} /></small></span><img src="/design/recentArrow.svg" alt="" /></div></li>)}</ul> : wikis.length ? (
           <ul className="wiki-list">
             {wikis.map((wiki) => (
               <li key={wiki.id}>

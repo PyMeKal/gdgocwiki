@@ -77,6 +77,31 @@ test('valid JSON response values are preserved regardless of content type', asyn
   }
 })
 
+test('requests log each outcome once without exposing payloads or server messages', async (t) => {
+  const info = t.mock.method(console, 'info', () => {})
+  const error = t.mock.method(console, 'error', () => {})
+  respond({ chats: [] })
+  await api.getChats('test')
+  respond(undefined, 204)
+  await api.unlockWiki('test', 'secret-password')
+  respond({ message: 'private server message', code: 'LOCKED' }, 401)
+  await assert.rejects(api.unlockWiki('test', 'secret-password'), { status: 401, code: 'LOCKED' })
+  mockAxios(async () => new Response('invalid'))
+  await assert.rejects(api.getChats('test'), /올바른 JSON/)
+  const networkError = new Error('private network details')
+  mockAxios(async () => { throw networkError })
+  await assert.rejects(api.getChats('test'), (value) => value === networkError)
+  assert.deepEqual(info.mock.calls.map(({ arguments: args }) => args), [
+    ['[API 성공] GET /wikis/test/chats (200)'],
+    ['[API 성공] POST /wikis/test/unlock (204)'],
+  ])
+  assert.deepEqual(error.mock.calls.map(({ arguments: args }) => args), [
+    ['[API 실패] POST /wikis/test/unlock (401)'],
+    ['[API 실패] GET /wikis/test/chats (200)'],
+    ['[API 실패] GET /wikis/test/chats (응답 없음)'],
+  ])
+})
+
 test('wiki list loads remembered IDs, skips locked or deleted wikis and reports server errors', async () => {
   const originalWindow = globalThis.window
   try {

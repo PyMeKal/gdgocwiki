@@ -5,13 +5,17 @@ import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer } from 'vite'
-import { readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { defaultWiki } from './fixtures/wiki.js'
 import { parseWikiData } from '../src/utils/importWiki.js'
 
 test('routes render API data, navigation, errors and safe documents', async (t) => {
-  const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom' })
+  // 개발 서버와 병렬 테스트의 React 번들 캐시가 섞이지 않게 합니다.
+  const cacheDir = await mkdtemp(join(tmpdir(), 'gdgocwiki-vite-'))
+  const server = await createServer({ cacheDir, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom' })
   const originalAdapter = axios.defaults.adapter
   const originalWindow = globalThis.window
   const wiki = { id: 'team-42', name: '테스트 위키', hasPassword: false }
@@ -167,5 +171,6 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
     if (originalWindow === undefined) delete globalThis.window
     else globalThis.window = originalWindow
     await server.close()
+    await rm(cacheDir, { recursive: true, force: true })
   }
 })

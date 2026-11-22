@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import App from './App.jsx'
 import PageLayout from './components/PageLayout.jsx'
+import PageSkeleton from './components/PageSkeleton.jsx'
 import GenerationPage from './Pages/GenerationPage.jsx'
 import FormPage from './Pages/FormPage.jsx'
 // import HomePage from './Pages/HomePage.jsx'
@@ -13,7 +14,7 @@ import WikiPageEditPage from './Pages/WikiPageEditPage.jsx'
 
 export const routes = [{
   element: <App />,
-  hydrateFallbackElement: <PageLayout><main id="main" className="container form-page" role="status">불러오는 중입니다…</main></PageLayout>,
+  hydrateFallbackElement: <PageLayout><PageSkeleton /></PageLayout>,
   children: [
     // { path: '/', element: <HomePage /> },
     { path: '/', element: <FormPage />, loader: importLoader, action: uploadAction },

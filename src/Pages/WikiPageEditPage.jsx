@@ -1,3 +1,4 @@
+import Skeleton from 'react-loading-skeleton'
 import { useEffect, useState } from 'react'
 import { Form, Link, useActionData, useBlocker, useLoaderData, useNavigation, useParams, useSearchParams } from 'react-router'
 import Breadcrumb from '../components/Breadcrumb.jsx'
@@ -57,19 +58,22 @@ function PageEditor({ page, editContent, sectionId, returnPath }) {
   )
 }
 
-export default function WikiPageEditPage() {
-  const { page, editContent } = useLoaderData()
-  const { wikiId, pagesId } = useParams()
+export default function WikiPageEditPage({ loading = false, wikiId: pendingWikiId, pagesId: pendingPagesId, mainId = 'main' }) {
+  const data = useLoaderData()
+  const { page, editContent } = loading ? {} : data
+  const params = useParams()
+  const wikiId = pendingWikiId ?? params.wikiId
+  const pagesId = pendingPagesId ?? params.pagesId
   const [searchParams] = useSearchParams()
   const sectionId = searchParams.get('section')
   const returnPath = wikiPagePath(wikiId, pagesId)
   return (
-    <main id="main" className="container form-page wiki-edit-page">
-      <title>{`${page.title} 수정 · 대화위키`}</title>
-      <Breadcrumb><Link to={returnPath}>{page.title}</Link> / 문서 편집</Breadcrumb>
+    <main id={mainId} className="container form-page wiki-edit-page" aria-busy={loading}>
+      <title>{loading ? '문서 편집 · 대화위키' : `${page.title} 수정 · 대화위키`}</title>
+      <Breadcrumb><Link to={returnPath}>{loading ? <Skeleton width={100} /> : page.title}</Link> / 문서 편집</Breadcrumb>
       <h1>{sectionId === null ? '전체 문서 편집' : '섹션 편집'}</h1>
       <Notice>편집을 완료하면 서버에 저장하고 원래 문서로 돌아갑니다. 본문에 <code>[* 주석 내용]</code>을 입력하면 주석이 표시됩니다.</Notice>
-      <PageEditor key={`${returnPath}?section=${sectionId}`} page={page} editContent={editContent} sectionId={sectionId} returnPath={returnPath} />
+      {loading ? <div className="panel field"><p>{sectionId === null ? '전체 문서 본문' : '선택한 섹션의 제목과 본문'}</p><p><Skeleton count={12} /></p></div> : <PageEditor key={`${returnPath}?section=${sectionId}`} page={page} editContent={editContent} sectionId={sectionId} returnPath={returnPath} />}
     </main>
   )
 }
