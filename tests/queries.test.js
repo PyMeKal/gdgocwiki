@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import axios from 'axios'
 import { QueryObserver } from '@tanstack/react-query'
-import { createQueryClient, wikiQuery, pagesQuery, pageQuery, editPageQuery, generationQuery } from '../src/api/queries.js'
+import { createQueryClient, wikiQuery, pagesQuery, pageQuery, pageTitlesQuery, editPageQuery, generationQuery } from '../src/api/queries.js'
 import { pageEditAction, unlockAction } from '../src/api/routeHandlers.js'
 import { mockAxios } from './helpers/mockAxios.js'
 
@@ -27,6 +27,22 @@ test('repeated and concurrent reads reuse cache; dated lists populate the detail
   assert.equal(pages[0].updatedAt, page.updatedAt)
   assert.deepEqual((await client.fetchQuery(pageQuery(wiki.id, page.id))).page, page)
   assert.equal(calls.length, 3)
+})
+
+test('wiki link lookup fetches only the page list and shares the cached result', async () => {
+  const calls = []
+  mockAxios(async (url) => {
+    calls.push(url)
+    assert.ok(url.endsWith('/pages'))
+    return Response.json({ pages: [{ id: page.id, title: page.title }] })
+  })
+  const options = pageTitlesQuery(wiki.id)
+  const [first, second] = await Promise.all([client.fetchQuery(options), client.fetchQuery(options)])
+  assert.deepEqual(first, [{ id: page.id, title: page.title }])
+  assert.deepEqual(second, first)
+  assert.equal(calls.length, 1)
+  await client.invalidateQueries({ queryKey: ['wiki', wiki.id] })
+  assert.equal(client.getQueryState(options.queryKey).isInvalidated, true)
 })
 
 test('editing uses a fresh snapshot; successful saves invalidate related caches and failed saves preserve them', async () => {

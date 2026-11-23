@@ -61,6 +61,61 @@ test('section editing uses the renderer boundaries and preserves the exact origi
   assert.throws(() => getPageSection('', 'section-1'), /섹션을 찾을 수 없습니다/)
 })
 
+test('triple-equals headings create sections and share exact editing boundaries with legacy headings', () => {
+  const content = '소개\r\n===개요===\r\n본문 [[다른 문서]]\r\n=== 개요 ===\n\n## 예전 제목\r마지막'
+  const raw = page(content)
+  const { wiki } = parseWikiData(raw)
+  assert.equal(wiki.description, '소개\r\n')
+  assert.deepEqual(wiki.sections.map(({ id, title }) => [id, title]), [
+    ['section-1', '개요'], ['section-2', '개요'], ['section-3', '예전 제목'],
+  ])
+  assert.equal(wiki.sections[0].blocks[0].text, '본문 [[다른 문서]]\r\n')
+  assert.equal(getPageSection(content, 'section-1').content, '===개요===\r\n본문 [[다른 문서]]\r\n')
+  assert.equal(getPageSection(content, 'section-2').content, '=== 개요 ===\n\n')
+  assert.equal(getPageSection(content, 'section-3').content, '## 예전 제목\r마지막')
+  for (const body of ['문장 속 ===제목===', '====제목====', '===닫히지 않음', '===제목=== 본문']) {
+    assert.deepEqual(parseWikiData(page(body)).wiki.sections, [], body)
+  }
+  assert.equal(parseWikiData(page('===제목===\n'.repeat(1000))).wiki.sections.length, 1000)
+  assert.throws(() => parseWikiData(page('===제목===\n'.repeat(1001))), /1,000/)
+  assert.equal(raw.content, content)
+})
+
+test('API double-equals headings split sections and use the same boundaries for editing', () => {
+  const content = '== 개요 ==\n본문\n\n=== 상세 ===\r\n상세 본문\r\n==개요==\r마지막'
+  const { wiki } = parseWikiData(page(content))
+  assert.equal(wiki.description, '')
+  assert.deepEqual(wiki.sections.map(({ title }) => title), ['개요', '상세', '개요'])
+  assert.equal(wiki.sections[0].blocks[0].text, '본문\n\n')
+  assert.equal(wiki.sections[1].blocks[0].text, '상세 본문\r\n')
+  assert.equal(getPageSection(content, 'section-1').content, '== 개요 ==\n본문\n\n')
+  assert.equal(getPageSection(content, 'section-2').content, '=== 상세 ===\r\n상세 본문\r\n')
+  assert.equal(getPageSection(content, 'section-3').content, '==개요==\r마지막')
+  for (const body of ['==제목===', '===제목==', '=제목=', '문장 속 ==제목==', '==제목== 본문']) {
+    assert.deepEqual(parseWikiData(page(body)).wiki.sections, [], body)
+  }
+})
+
+test('asterisk list lines become grouped list blocks without changing prose, notes or editing source', () => {
+  const content = '== 개요 ==\r\n소개[* 주석] 문장 속 * 기호\r\n* 첫 항목 [[다른 문서]]\r\n* 둘째 항목[* 목록 주석]\n뒤 문단\r* 셋째 항목\r\\* 일반 텍스트\r*공백 없는 별표\r**강조**'
+  const raw = page(content)
+  const { wiki } = parseWikiData(raw)
+  assert.deepEqual(wiki.sections[0].blocks, [
+    { type: 'paragraph', text: '소개[* 주석] 문장 속 * 기호\r\n' },
+    { type: 'list', items: ['첫 항목 [[다른 문서]]', '둘째 항목[* 목록 주석]'] },
+    { type: 'paragraph', text: '뒤 문단\r' },
+    { type: 'list', items: ['셋째 항목'] },
+    { type: 'paragraph', text: '\\* 일반 텍스트\r*공백 없는 별표\r**강조**' },
+  ])
+  assert.equal(getPageSection(content, 'section-1').content, content)
+  assert.equal(raw.content, content)
+  const listOnly = parseWikiData(page('==목록==\n* 하나\n* 둘')).wiki
+  assert.deepEqual(listOnly.sections[0].blocks, [{ type: 'list', items: ['하나', '둘'] }])
+  assert.deepEqual(prepareWiki(wiki).footnotes.map(({ content }) => content), ['주석', '목록 주석'])
+  const introduction = prepareWiki(parseWikiData(page('* 소개 하나\n* 소개 둘')).wiki)
+  assert.deepEqual(introduction.description, [{ type: 'list', items: [['소개 하나'], ['소개 둘']] }])
+})
+
 test('invalid API fields and oversized content fail before replacing a document', () => {
   for (const raw of [null, [], {}, page('', { title: 1 }), page('', { title: ' ' }), page('', { title: 'a'.repeat(101) }),
     page(null), page(123), page('', { category: {} })]) assert.throws(() => parseWikiData(raw))

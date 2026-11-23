@@ -27,6 +27,12 @@ export const pageQuery = (wikiId, pageId) => ({
   },
 })
 
+// 내부 링크에는 제목과 ID만 필요하므로 각 문서의 상세 조회는 생략합니다.
+export const pageTitlesQuery = (wikiId) => ({
+  queryKey: ['wiki', wikiId, 'page-titles'],
+  queryFn: async () => (await getPages(wikiId)).pages,
+})
+
 export const pagesQuery = (wikiId, client) => ({
   queryKey: ['wiki', wikiId, 'pages'],
   queryFn: async () => {

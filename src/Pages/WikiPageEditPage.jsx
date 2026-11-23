@@ -46,7 +46,7 @@ function PageEditor({ page, editContent, sectionId, returnPath }) {
       <input type="hidden" name="version" value={original.version} />
       <div className="panel field">
         <label htmlFor="edit-page-content">{sectionId === null ? '전체 문서 본문' : '선택한 섹션의 제목과 본문'}</label>
-        <p id="edit-page-help" className="muted small">각 섹션은 <code>## 제목</code>으로 시작합니다. {sectionId === null ? '모든 섹션과 문서 소개를 수정할 수 있습니다.' : '선택한 섹션만 수정하며, 다른 섹션은 그대로 유지됩니다.'}</p>
+        <p id="edit-page-help" className="muted small">각 섹션은 <code>== 제목 ==</code>, <code>===제목===</code> 또는 <code>## 제목</code>으로 시작합니다. <code>[[문서명]]</code>으로 같은 위키의 문서를 연결할 수 있습니다. {sectionId === null ? '모든 섹션과 문서 소개를 수정할 수 있습니다.' : '선택한 섹션만 수정하며, 다른 섹션은 그대로 유지됩니다.'}</p>
         <textarea id="edit-page-content" name="content" rows={20} aria-describedby="edit-page-help" value={content} disabled={saving} onChange={(event) => setContent(event.target.value)} />
       </div>
       <div className="editor-save">

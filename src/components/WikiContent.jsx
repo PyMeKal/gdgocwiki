@@ -1,10 +1,15 @@
 import Footnote from './Footnote.jsx'
 import WikiImage from './WikiImage.jsx'
 import { isSafeUrl } from '../utils/wikiSchema.js'
+import { Link } from 'react-router'
 
 export function WikiText({ parts }) {
   // HTML처럼 보이는 입력도 문자열로 렌더링하고, 준비된 주석 토큰만 컴포넌트로 바꿉니다.
-  return parts.map((part, index) => typeof part === 'string' ? part : <Footnote key={index} {...part} />)
+  return parts.map((part, index) => {
+    if (typeof part === 'string') return part
+    if (part.type === 'wikiLink') return <Link key={index} to={part.to}>{part.label}</Link>
+    return <Footnote key={index} {...part} />
+  })
 }
 
 export default function WikiContent({ blocks }) {

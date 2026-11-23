@@ -102,9 +102,13 @@ input[type="file"]::file-selector-button { border: 1px solid var(--color-file-bu
 .category span { padding: 0 6px; color: var(--color-category-separator); }
 .toc { display: table; max-width: 100%; margin-top: 24px; padding: 16px 24px; border: 1px solid var(--border); background: var(--color-document-background); }
 .toc h2 { font-size: 17px; }
+.toc-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.toc-heading button { border: 0; padding: 0; background: transparent; color: var(--color-article-accent); font: inherit; font-size: 10px; cursor: pointer; }
 .toc ol { list-style: none; margin: 8px 0 0; padding-left: 0; font-size: 14px; }
 .toc ol ol { padding-left: 20px; }
 .toc li { padding-left: 4px; }
+.toc-item { border: 0; padding: 0; background: transparent; color: var(--color-article-accent); font: inherit; text-align: left; cursor: pointer; }
+.toc-item:hover { text-decoration: underline; }
 .wiki-section { margin-top: 32px; scroll-margin-top: 24px; }
 .wiki-section-heading { font-size: 23px; border-bottom: 1px solid var(--color-document-heading-border); padding-bottom: 7px; margin-bottom: 18px; overflow-wrap: anywhere; }
 .section-edit { margin-left: 12px; vertical-align: middle; font-size: 13px; font-weight: 400; }
@@ -334,7 +338,14 @@ input[type="password"] { width: 100%; }
   .container .react-loading-skeleton::after { animation: none; }
 }
 
+@keyframes reveal-skeleton {
+  to { visibility: visible; }
+}
+
 .container .react-loading-skeleton {
+  /* Query가 200ms 안에 완료되면 표시하지 않고, 대기 중 레이아웃은 유지합니다. */
+  visibility: hidden;
+  animation: reveal-skeleton 0s linear 200ms forwards;
   --base-color: var(--color-text-secondary);
   --highlight-color: var(--color-muted);
 }

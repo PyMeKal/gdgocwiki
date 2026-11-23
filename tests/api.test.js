@@ -139,6 +139,23 @@ test('section editing preserves other sections and uses the loaded version', asy
   assert.equal((await pageEditAction({ params, request: editRequest('## 변경\n내용') }, client)).error, '저장 실패')
 })
 
+test('triple-equals section edits preserve neighboring sections and reject multiple headings', async () => {
+  const original = { ...page, content: '소개\r\n===개요===\r\n원본\r\n===일정===\r\n유지\r\n' }
+  const writes = []
+  mockAxios(async (url, options) => {
+    if (options.method === 'PATCH') writes.push(JSON.parse(options.data))
+    return Response.json(url.endsWith('/pages/page%2F1') ? original : wiki)
+  })
+  const params = { wikiId: wiki.id, pagesId: page.id }
+  assert.equal((await client.fetchQuery(editPageQuery(wiki.id, page.id, 'section-1'))).editContent, '===개요===\r\n원본\r\n')
+  const response = await pageEditAction({ params, request: editRequest('===새 제목===\n수정') }, client)
+  assert.equal(response.status, 302)
+  assert.deepEqual(writes, [{ content: '소개\r\n===새 제목===\n수정\n===일정===\r\n유지\r\n', version: 3 }])
+  const invalid = await pageEditAction({ params, request: editRequest('===하나===\n===둘===\n본문') }, client)
+  assert.match(invalid.error, /제목 하나/)
+  assert.equal(writes.length, 1)
+})
+
 test('upload action authenticates before upload and generation; invalid files send nothing', async () => {
   const form = new FormData()
   form.set('title', '테스트')

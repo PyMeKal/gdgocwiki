@@ -50,7 +50,7 @@ export async function pageEditAction({ request, params }, client) {
     if (sectionId !== null) {
       const section = getPageSection(page.content, sectionId)
       const { wiki } = parseWikiData({ ...page, content })
-      if (wiki.description || wiki.sections.length !== 1) throw new Error('선택한 섹션의 ## 제목 하나와 본문만 입력해주세요.')
+      if (wiki.description || wiki.sections.length !== 1) throw new Error('선택한 섹션의 == 제목 ==, ===제목=== 또는 ## 제목 하나와 본문만 입력해주세요.')
       if (section.end < page.content.length && !/[\r\n]$/.test(content)) content += '\n'
       content = page.content.slice(0, section.start) + content + page.content.slice(section.end)
     }

@@ -1,5 +1,5 @@
 // 화면이 이미 사용하는 ID를 입력 JSON이 가져가면 목차나 접근성 연결이 잘못된 요소를 가리킬 수 있습니다.
-export const reservedSectionIds = ['main', 'footnotes-title', 'references-title', 'infobox-title']
+export const reservedSectionIds = ['main', 'footnotes-title', 'references-title', 'infobox-title', 'wiki-contents']
 
 export function isSafeUrl(value) {
   if (typeof value !== 'string' || !value.trim() || [...value].some((char) => char.charCodeAt(0) <= 32 || char === '\\') || value.startsWith('//')) return false

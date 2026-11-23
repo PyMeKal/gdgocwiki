@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { createQueryClient, wikiQuery, pagesQuery, pageQuery, editPageQuery, generationQuery } from '../src/api/queries.js'
+import { createQueryClient, wikiQuery, pagesQuery, pageQuery, pageTitlesQuery, editPageQuery, generationQuery } from '../src/api/queries.js'
 import { getRecentWikiIds } from '../src/utils/recentWikis.js'
 import axios from 'axios'
 import { mockAxios } from './helpers/mockAxios.js'
@@ -34,7 +34,7 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
     if (status !== 200) return Response.json({ message: '조회 실패' }, { status })
     if (path.includes('/generations/')) return Response.json({ status: jobStatus, createdPages: 1, updatedPages: 0 })
     if (path.endsWith('/pages/page-17')) return Response.json(page)
-    if (path.endsWith('/pages')) return Response.json({ pages: [{ id: page.id, title: page.title, category: page.category }] })
+    if (path.endsWith('/pages')) return Response.json({ pages: [{ id: page.id, title: page.title, category: page.category }, { id: 'linked/page', title: '다른 문서', updatedAt: page.updatedAt }] })
     if (path === '/wikis/team-42') return Response.json(wiki)
     throw new Error(`Unexpected API request: ${path}`)
   })
@@ -48,7 +48,7 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
       if (parts[0] === 'wiki' && parts[1] === wiki.id) {
         if (parts[2] === 'pages') {
           if (parts[4] === 'edit') await load(editPageQuery(wiki.id, page.id, url.searchParams.get('section')))
-          else await Promise.all([load(wikiQuery(wiki.id)), load(pageQuery(wiki.id, page.id))])
+          else await Promise.all([load(wikiQuery(wiki.id)), load(pageQuery(wiki.id, page.id)), ...(page.content.includes('[[') ? [load(pageTitlesQuery(wiki.id))] : [])])
         } else if (parts[2] === 'generations') await load(generationQuery(wiki.id, parts[3], client))
         else if (parts.length === 2) await Promise.all([load(wikiQuery(wiki.id)), load(pagesQuery(wiki.id, client))])
       } else if (path === '/' || path === '/wikis') await Promise.all(getRecentWikiIds().map((id) => load(wikiQuery(id))))
@@ -92,6 +92,26 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
       values.clear()
       assert.match(await renderPage('/wikis'), /아직 이 브라우저에 기록된/)
     })
+    await t.test('API equals headings render linked contents and same-wiki article links', async () => {
+      const original = page.content
+      page.content = '소개 [[다른 문서]]\n* 소개 항목\n== 개요 ==\n* [[다른 문서]]와 [[없는 문서]][* 주석]\n* 둘째 항목\n===일정===\n<script>bad()</script>'
+      try {
+        const html = await renderPage('/wiki/team-42/pages/page-17')
+        assert.match(html, /<button class="toc-item" type="button" aria-controls="section-1">1\. 개요<\/button>/)
+        assert.match(html, /<button class="toc-item" type="button" aria-controls="section-2">2\. 일정<\/button>/)
+        assert.match(html, /<section id="section-1" class="wiki-section">/)
+        assert.equal((html.match(/href="\/wiki\/team-42\/pages\/linked%2Fpage"/g) ?? []).length, 2)
+        assert.match(html, /href="\/wiki\/team-42\?q=%EC%97%86%EB%8A%94%20%EB%AC%B8%EC%84%9C"/)
+        assert.match(html, /aria-expanded="true" aria-controls="wiki-contents"/)
+        assert.match(html, /id="wiki-contents"/)
+        assert.match(html, /id="footnote-1"/)
+        assert.match(html, /<ul class="content-list"><li class="wiki-text">소개 항목<\/li><\/ul>/)
+        assert.match(html, /<ul class="content-list"><li class="wiki-text"><a[^>]+>다른 문서/)
+        assert.match(html, /<li class="wiki-text">둘째 항목<\/li>/)
+        assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt;/)
+        assert.doesNotMatch(html, /===|\[\[|<script>/)
+      } finally { page.content = original }
+    })
     await t.test('remembered lists skip locked and deleted wikis', async () => {
       values.set('conversation-wiki:recent-wikis:v1', JSON.stringify([wiki.id, 'locked', 'deleted']))
       const html = await renderPage('/wikis')
@@ -130,7 +150,7 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
       const html = renderToStaticMarkup(createElement(WikiDocument, { wiki }))
       assert.doesNotMatch(html, /<script>alert|<script>bad/)
       assert.match(html, /&lt;script&gt;/)
-      assert.match(html, /href="#custom">1\. 수정한 목차/)
+      assert.match(html, /aria-controls="custom">1\. 수정한 목차<\/button>/)
       assert.match(html, /id="custom"/)
       assert.match(html, /수정한 내용/)
       assert.match(html, /수정한 셀/)
@@ -148,7 +168,7 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
       const { default: WikiDocument } = await server.ssrLoadModule('/src/components/WikiDocument.jsx')
       const wiki = JSON.parse(await readFile(new URL('./fixtures/wikiDocument.json', import.meta.url), 'utf8'))
       const html = renderToStaticMarkup(createElement(WikiDocument, { wiki }))
-      assert.match(html, /href="#details">1\.1\.1\. 세부 항목/)
+      assert.match(html, /aria-controls="details">1\.1\.1\. 세부 항목<\/button>/)
       assert.match(html, /<h4 class="wiki-section-heading">.*1\.1\.1\.<\/a> 세부 항목<\/h4>/)
       assert.ok(html.indexOf('class="toc"') < html.indexOf('class="wiki-infobox'))
       assert.ok(html.indexOf('class="wiki-infobox') < html.indexOf('class="wiki-sections"'))
