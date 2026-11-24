@@ -27,6 +27,7 @@ export async function uploadAction({ request }, client) {
     chat ??= await uploadChat(wiki.id, file)
     const job = await generatePages(wiki.id, { chatIds: [chat.id], mode: 'MERGE' })
     await refreshWiki(client, wiki.id)
+    client.setQueryData(['wiki', wiki.id, 'generations', job.jobId, 'upload'], { fileName: file.name })
     return redirect(`${wikiPath(wiki.id)}/generations/${encodeURIComponent(job.jobId)}`)
   } catch (error) {
     return { wiki, chat, error: error.message }

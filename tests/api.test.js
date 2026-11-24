@@ -169,6 +169,7 @@ test('upload action authenticates before upload and generation; invalid files se
   })
   const submit = () => uploadAction({ request: new Request('http://localhost/', { method: 'POST', body: form }) }, client)
   assert.equal((await submit()).headers.get('Location'), '/wiki/created/generations/job')
+  assert.deepEqual(client.getQueryData(['wiki', 'created', 'generations', 'job', 'upload']), { fileName: 'test.txt' })
   assert.deepEqual(methods.map(value => value.replace(api.API_BASE_URL, '')), ['POST /wikis', 'POST /wikis/created/unlock', 'POST /wikis/created/chats', 'POST /wikis/created/generations'])
   form.set('chat', new File(['bad'], 'test.exe'))
   methods.length = 0

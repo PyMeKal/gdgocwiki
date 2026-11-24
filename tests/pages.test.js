@@ -49,7 +49,10 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
         if (parts[2] === 'pages') {
           if (parts[4] === 'edit') await load(editPageQuery(wiki.id, page.id, url.searchParams.get('section')))
           else await Promise.all([load(wikiQuery(wiki.id)), load(pageQuery(wiki.id, page.id)), ...(page.content.includes('[[') ? [load(pageTitlesQuery(wiki.id))] : [])])
-        } else if (parts[2] === 'generations') await load(generationQuery(wiki.id, parts[3], client))
+        } else if (parts[2] === 'generations') {
+          await load(generationQuery(wiki.id, parts[3], client))
+          client.setQueryData(['wiki', wiki.id, 'generations', parts[3], 'upload'], { fileName: '우리 대화 <test>.txt' })
+        }
         else if (parts.length === 2) await Promise.all([load(wikiQuery(wiki.id)), load(pagesQuery(wiki.id, client))])
       } else if (path === '/' || path === '/wikis') await Promise.all(getRecentWikiIds().map((id) => load(wikiQuery(id))))
       const router = createMemoryRouter(createRoutes(client), { initialEntries: [path] })
@@ -134,6 +137,13 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
         const html = await renderPage('/wiki/team-42/generations/job-1')
         assert.ok(html.includes(text))
         assert.equal(html.includes('>위키로 이동<'), state === 'COMPLETED')
+        assert.match(html, /<a aria-current="page" href="\/"/)
+        assert.equal(html.includes('aria-current="step"'), state === 'PROCESSING')
+        assert.doesNotMatch(html, /design-collective\.txt|1\.8 MB|대화 다시 올리기|href="\/form"/)
+        if (state === 'FAILED') {
+          assert.match(html, /href="\/"[^>]*>홈으로 이동<\/a>/)
+          assert.doesNotMatch(html, /generation-upload|generation-steps|generation-note/)
+        } else assert.match(html, /우리 대화 &lt;test&gt;\.txt/)
       }
     })
     await t.test('documents render safely with sequential footnotes', async () => {

@@ -2,9 +2,10 @@ import { Link, useLocation, useMatch } from 'react-router'
 
 export default function BottomNavigation() {
   const match = useMatch('/wiki/:wikiId/*')
+  const generation = useMatch('/wiki/:wikiId/generations/:jobId')
   const { pathname } = useLocation()
   const myWikis = pathname === '/wikis' || Boolean(match)
-  const creating = pathname === '/' || pathname === '/form' || pathname.endsWith('/import')
+  const creating = pathname === '/' || pathname === '/form' || pathname.endsWith('/import') || Boolean(generation)
   return (
     <nav className="bottom-navigation" aria-label="주 메뉴">
       <div className="bottom-navigation-inner">
