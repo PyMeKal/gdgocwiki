@@ -15,7 +15,8 @@
 body { margin: 0; }
 a { color: var(--green); text-decoration: none; }
 a:hover { text-decoration: underline; }
-a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 4px; }
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 4px; }
+input:focus, textarea:focus, select:focus { outline: none; box-shadow: none; }
 h1, h2, h3, p { margin: 0; }
 h1 { font-size: 32px; line-height: 1.45; letter-spacing: -1px; }
 h2 { font-size: 20px; line-height: 1.5; }
@@ -188,7 +189,7 @@ th { background: var(--color-green-surface); font-weight: 600; }
 /* WikiTalk */
 :root { color: var(--color-text); background: var(--color-background); line-height: 1.55; --green: var(--color-accent); --border: var(--color-border); --muted: var(--color-muted); }
 body { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
-a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline-color: var(--color-accent); }
+a:focus-visible, button:focus-visible { outline-color: var(--color-accent); }
 button, select { font: inherit; cursor: pointer; }
 .container { max-width: 1056px; }
 .site-header { background: var(--color-transparent); }
@@ -208,6 +209,10 @@ button, select { font: inherit; cursor: pointer; }
 .form-page { padding-top: 14px; }
 input[type="text"], input[type="password"], textarea, select { border: 1px solid var(--border); border-radius: 9px; padding: 12px; color: inherit; background: var(--color-white); max-width: 100%; }
 input[type="password"] { width: 100%; }
+.password-input { position: relative; }
+.password-input input { width: 100%; padding-right: 48px; }
+.password-toggle { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
+.password-toggle:disabled { cursor: not-allowed; }
 .notice { background: var(--color-surface-muted); border-color: var(--color-border-accent); color: var(--color-muted); }
 .import-page { max-width: 780px; }
 .import-intro .eyebrow { font-size: 10px; margin-bottom: 13px; }
@@ -229,6 +234,7 @@ input[type="password"] { width: 100%; }
 .uploaded-file { display: flex; gap: 10px; align-items: center; text-align: left; background: var(--color-surface-accent); padding: 12px; border-radius: 10px; }
 .uploaded-file img { flex-shrink: 0; }
 .import-page .panel > .actions .primary { width: 100%; min-height: 50px; font-size: 14px; gap: 10px; border-radius: 12px; }
+.import-page .panel > .actions .primary:disabled { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-text); }
 .privacy-note { display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); margin: 13px 0 26px; }
 .recent-wiki h2 { font-size: 13px; margin-bottom: 12px; }
 .recent-wiki-card { display: flex; gap: 12px; align-items: center; padding: 15px; border: 1px solid var(--border); border-radius: 14px; background: var(--color-white); color: inherit; font-size: 13px; }
@@ -318,7 +324,6 @@ input[type="password"] { width: 100%; }
 .import-options summary { cursor: pointer; }
 .import-options .field { color: var(--color-text); }
 .import-page .upload-area .choose-export { display: block; font-size: 14px; font-weight: 600; margin: 8px 0; cursor: pointer; }
-.upload-area:focus-within { outline: 3px solid var(--color-accent); outline-offset: 4px; }
 .article-page .category { border-color: var(--color-article-border); font-size: 10px; color: var(--color-article-accent); }
 .article-tools { display: flex; align-items: stretch; border: 1px solid var(--color-article-border); border-radius: 3px; margin-top: 14px; font-size: 11px; }
 .article-tools > span:first-child, .article-tools > a { flex: 1; text-align: center; padding: 8px 12px; }

@@ -3,6 +3,7 @@ import Skeleton from 'react-loading-skeleton'
 import { useState } from 'react'
 import { Link, useFetcher, useParams } from 'react-router'
 import ChatFileUpload from '../components/ChatFileUpload.jsx'
+import PasswordInput from '../components/PasswordInput.jsx'
 import { wikiPath } from '../utils/paths.js'
 
 export default function FormPage() {
@@ -43,7 +44,7 @@ export default function FormPage() {
           </div>
           <details className="import-options"><summary>위키 비밀번호 (선택)</summary><div className="field">
             <label className="sr-only" htmlFor="wiki-password">위키 비밀번호 (선택)</label>
-            <input id="wiki-password" name="password" type="password" autoComplete="new-password" aria-describedby="password-help" readOnly={busy || Boolean(fetcher.data?.wiki)} />
+            <PasswordInput id="wiki-password" name="password" autoComplete="new-password" aria-describedby="password-help" readOnly={busy || Boolean(fetcher.data?.wiki)} />
             <p id="password-help" className="muted small">설정하면 인증한 브라우저에서만 위키를 열 수 있습니다. 비워두면 비밀번호 없이 열립니다.</p>
           </div>
           </details>
@@ -64,8 +65,8 @@ export default function FormPage() {
         <p className="privacy-note"><img src="/design/lock.svg" alt="" />업로드 전 대화 참여자의 동의를 확인해주세요.</p>
         {(loading || wikis.length > 0) && <section className="recent-wiki">
           <h2>Pick up where you left off</h2>
-          {loading && <div className="recent-wiki-card"><Skeleton width={180} /></div>}
-          {wikis.map((wiki) => <Link key={wiki.id} className="recent-wiki-card" to={wikiPath(wiki.id)}><span className="recent-wiki-icon"><img src="/design/recent.svg" alt="" /></span><span><strong>{wiki.name}</strong><small>대화로 만든 문서를 살펴보세요.</small></span><img src="/design/recentArrow.svg" alt="" /></Link>)}
+          {loading && wikis.length === 0 && <div className="recent-wiki-card"><Skeleton width={180} /></div>}
+          {wikis.slice(0, 3).map((wiki) => <Link key={wiki.id} className="recent-wiki-card" to={wikiPath(wiki.id)}><span className="recent-wiki-icon"><img src="/design/recent.svg" alt="" /></span><span><strong>{wiki.name}</strong><small>대화로 만든 문서를 살펴보세요.</small></span><img src="/design/recentArrow.svg" alt="" /></Link>)}
         </section>}
         <aside className="help-box" aria-labelledby="help-title">
           <h2 id="help-title">대화 파일은 어떻게 준비하나요?</h2>

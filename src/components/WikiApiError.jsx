@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { Form, Link, useActionData, useNavigation, useRouteError, useLocation, useNavigate } from 'react-router'
+import PasswordInput from './PasswordInput.jsx'
 
 export default function WikiApiError({ error: queryError, onRetry }) {
   const routeError = useRouteError()
@@ -20,7 +21,7 @@ export default function WikiApiError({ error: queryError, onRetry }) {
         <Form method="post" className="panel">
           <div className="field">
             <label htmlFor="wiki-password">위키 비밀번호</label>
-            <input id="wiki-password" name="password" type="password" autoComplete="current-password" required disabled={busy} />
+            <PasswordInput id="wiki-password" name="password" autoComplete="current-password" required disabled={busy} />
           </div>
           {result?.error && <p role="alert" className="upload-error">{result.error}</p>}
           <button className="button primary" type="submit" disabled={busy}>{busy ? '확인 중…' : '위키 열기'}</button>
