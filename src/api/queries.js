@@ -1,4 +1,5 @@
 import { QueryClient, useQueries } from '@tanstack/react-query'
+import { useState } from 'react'
 import { getGeneration, getPage, getPages, getWiki } from './wikis.js'
 import { getPageSection, parseWikiData } from '../utils/importWiki.js'
 import { getRecentWikiIds } from '../utils/recentWikis.js'
@@ -71,12 +72,19 @@ export const generationQuery = (wikiId, jobId, client) => ({
 
 export function useRecentWikis(wikiId, optional = false) {
   // shortcut: 전체 목록 API가 없어 이 브라우저에서 기록한 위키만 조회합니다.
-  const ids = [...new Set([wikiId, ...getRecentWikiIds()].filter(Boolean))]
+  // 조회 성공 시 최근 기록의 순서가 바뀌어도 현재 화면의 카드 자리는 유지합니다.
+  const [recentIds] = useState(getRecentWikiIds)
+  const ids = [...new Set([wikiId, ...recentIds].filter(Boolean))]
   const results = useQueries({ queries: ids.map(wikiQuery) })
   const unavailable = (result) => result.error?.status === 401 || result.error?.status === 404
+  const isPending = results.some((result) => result.isPending)
+  const entries = results.map((result, index) => ({
+    id: ids[index], wiki: unavailable(result) ? undefined : result.data,
+  })).filter((entry) => isPending || entry.wiki)
   return {
     wikis: results.filter((result) => result.data && !unavailable(result)).map((result) => result.data),
-    isPending: results.some((result) => result.isPending),
+    entries,
+    isPending,
     error: optional ? null : results.find((result) => result.error && !unavailable(result))?.error,
   }
 }

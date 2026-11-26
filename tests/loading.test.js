@@ -17,6 +17,7 @@ test('query data renders independently; navigation has no loaders and refetch ke
   const cacheDir = await mkdtemp(join(tmpdir(), 'gdgocwiki-vite-'))
   const server = await createServer({ cacheDir, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom' })
   const originalAdapter = axios.defaults.adapter
+  const originalWindow = globalThis.window
   const client = createQueryClient()
   let router
   let release
@@ -41,6 +42,8 @@ test('query data renders independently; navigation has no loaders and refetch ke
     assert.match(initial, /Search this wiki/)
     assert.match(initial, /Your conversation, organized/)
     assert.match(initial, /Last modified/)
+    assert.equal((initial.match(/class="category-placeholder"/g) || []).length, 3)
+    assert.match(initial, /class="wiki-home-results" aria-labelledby="pages-title" aria-busy="true"/)
     assert.doesNotMatch(initial, /불러오는 중입니다/)
 
     await client.fetchQuery(wikiQuery(wiki.id))
@@ -49,6 +52,7 @@ test('query data renders independently; navigation has no loaders and refetch ke
     assert.match(partial, /문서 목록 로딩 중/)
     await client.fetchQuery(pagesQuery(wiki.id, client))
     assert.doesNotMatch(render(), /react-loading-skeleton/)
+    assert.doesNotMatch(render(), /category-placeholder/)
 
     await router.navigate('/wiki/test/pages/article')
     const pending = render()
@@ -56,9 +60,21 @@ test('query data renders independently; navigation has no loaders and refetch ke
     assert.match(pending, />Search<\/button>/)
     assert.match(pending, /전체 문서 편집/)
     assert.doesNotMatch(pending, /hidden=""/)
+    assert.match(pending, /class="toc" aria-label="문서 목차" aria-busy="true"/)
+    assert.match(pending, /disabled="" aria-expanded="true" aria-controls="wiki-contents"/)
+    assert.match(pending, /aria-label="주요 정보 로딩 중" aria-busy="true"/)
+    assert.ok(pending.indexOf('class="toc"') < pending.indexOf('class="wiki-infobox'))
+    assert.ok(pending.indexOf('class="wiki-infobox') < pending.indexOf('class="wiki-sections"'))
+    const infoboxPlaceholder = pending.match(/<aside class="wiki-infobox[\s\S]*?<\/aside>/)?.[0] ?? ''
+    assert.equal((infoboxPlaceholder.match(/<tr>/g) || []).length, 4)
+    const { default: WikiDocument } = await server.ssrLoadModule('/src/components/wiki/WikiDocument.jsx')
+    const loadingDocument = renderToStaticMarkup(createElement(WikiDocument, { loading: true, updatedAt: page.updatedAt }))
+    assert.equal((loadingDocument.match(/Last edited:/g) || []).length, 1)
     await client.fetchQuery(pageQuery(wiki.id, page.id))
     assert.match(render(), /문서 내용/)
     assert.doesNotMatch(render(), /react-loading-skeleton/)
+    assert.doesNotMatch(render(), /wiki-infobox|주요 정보 로딩 중/)
+    assert.match(render(), /aria-controls="section-1">1\. 개요/)
 
     gate = new Promise((resolve) => { release = resolve })
     const refetching = client.fetchQuery({ ...pageQuery(wiki.id, page.id), staleTime: 0 })
@@ -81,11 +97,34 @@ test('query data renders independently; navigation has no loaders and refetch ke
         assert.doesNotMatch(html.match(/<form[\s\S]*?<\/form>/)?.[0] ?? '', /react-loading-skeleton/)
       }
     }
+
+    const ids = ['first', 'second', 'last', 'locked', 'deleted']
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify(ids), setItem: () => {} } }
+    await router.navigate('/wikis')
+    const slots = (html) => [...html.matchAll(/data-wiki-id="([^"]+)"/g)].map((match) => match[1])
+    assert.deepEqual(slots(render()), ids)
+    client.setQueryData(wikiQuery('last').queryKey, { id: 'last', name: '먼저 도착한 위키' })
+    const partiallyLoaded = render()
+    assert.match(partiallyLoaded, /먼저 도착한 위키/)
+    assert.match(partiallyLoaded, /href="\/wiki\/last"/)
+    assert.match(partiallyLoaded, /react-loading-skeleton/)
+    assert.deepEqual(slots(partiallyLoaded), ids)
+    for (const id of ids.slice(0, 2)) client.setQueryData(wikiQuery(id).queryKey, { id, name: id })
+    mockAxios(async (url) => Response.json({ message: '접근 불가' }, { status: url.endsWith('/locked') ? 401 : 404 }))
+    await assert.rejects(client.fetchQuery(wikiQuery('locked')), { status: 401 })
+    assert.deepEqual(slots(render()), ids)
+    await assert.rejects(client.fetchQuery(wikiQuery('deleted')), { status: 404 })
+    const loadedList = render()
+    assert.deepEqual(slots(loadedList), ids.slice(0, 3))
+    assert.doesNotMatch(loadedList, /react-loading-skeleton/)
+    assert.match(loadedList, /class="wiki-list-results" aria-label="위키 목록" aria-busy="false"/)
   } finally {
     release?.()
     router?.dispose()
     client.clear()
     axios.defaults.adapter = originalAdapter
+    if (originalWindow === undefined) delete globalThis.window
+    else globalThis.window = originalWindow
     await server.close()
     await rm(cacheDir, { recursive: true, force: true })
   }

@@ -123,10 +123,32 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
       status = 500
       assert.match(await renderPage('/wiki/team-42'), /다시 시도/)
       status = 401
-      assert.match(await renderPage('/wiki/team-42'), /위키 비밀번호/)
+      const authentication = await renderPage('/wiki/team-42')
+      assert.match(authentication, /class="container wiki-auth-page"/)
+      assert.match(authentication, /우리만의 이야기,<br\/>비밀번호로 열어봐요\./)
+      assert.match(authentication, /src="\/design\/auth-lock.svg"/)
+      const passwordInput = authentication.match(/<input[^>]*id="wiki-password"[^>]*>/)?.[0] ?? ''
+      assert.match(passwordInput, /name="password"/)
+      assert.match(passwordInput, /type="password"/)
+      assert.match(passwordInput, /autoComplete="current-password"/)
+      assert.match(authentication, /aria-label="비밀번호 보기" aria-pressed="false"/)
+      assert.match(authentication, /비밀번호를 모르시나요/)
+      assert.doesNotMatch(authentication, /다시 시도|인증 필요/)
       status = 404
       assert.match(await renderPage('/wiki/team-42'), /요청한 위키 또는 문서를 찾을 수 없습니다/)
       status = 200
+    })
+    await t.test('password authentication preserves safe errors and disables controls during submission', async () => {
+      const { default: WikiPasswordAuth } = await server.ssrLoadModule('/src/components/auth/WikiPasswordAuth.jsx')
+      const router = createMemoryRouter([{ path: '/', element: createElement(WikiPasswordAuth, { wikiName: '인증할 위키', busy: true, error: '<script>실패</script>' }) }])
+      try {
+        const html = renderToStaticMarkup(createElement(RouterProvider, { router }))
+        assert.match(html, /인증할 위키/)
+        assert.match(html, /aria-describedby="wiki-password-help wiki-password-error" aria-invalid="true"/)
+        assert.match(html, /id="wiki-password-error" role="alert" class="upload-error">&lt;script&gt;실패&lt;\/script&gt;/)
+        assert.equal((html.match(/disabled=""/g) || []).length, 3)
+        assert.match(html, /확인 중…/)
+      } finally { router.dispose() }
     })
     await t.test('generation states reflect server-owned jobs', async () => {
       for (const [state, text] of [['PENDING', '위키를 만들고 있습니다'], ['PROCESSING', '위키를 만들고 있습니다'], ['FAILED', '문서를 만들지 못했습니다'], ['COMPLETED', '다 제작되었습니다!']]) {
