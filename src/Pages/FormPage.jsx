@@ -49,13 +49,6 @@ export default function FormPage() {
           </div>
           </details>
 
-          {chat && (
-            <section className="chat-preview" aria-labelledby="preview-title">
-              <h3 id="preview-title">대화 미리보기</h3>
-              <p className="muted small">처음 2,000자까지 표시합니다.</p>
-              <pre>{chat.text.slice(0, 2000)}</pre>
-            </section>
-          )}
           {fetcher.data?.error && <p className="upload-error" role="alert">{fetcher.data.error}</p>}
           <div className="actions">
             <button className="button primary" type="submit" disabled={busy || !chat}>{fetcher.state !== 'idle' ? '업로드 중…' : 'Generate my wiki'}<img src="/design/generate.svg" alt="" /></button>
