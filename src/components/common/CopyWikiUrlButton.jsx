@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { copyWikiUrl } from '../utils/copyWikiUrl.js'
+import { copyWikiUrl } from '../../utils/copyWikiUrl.js'
 
 export default function CopyWikiUrlButton({ wikiId, iconOnly = false }) {
   const [result, setResult] = useState(null)

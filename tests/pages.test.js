@@ -11,7 +11,7 @@ import { createServer } from 'vite'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
 import { defaultWiki } from './fixtures/wiki.js'
 import { parseWikiData } from '../src/utils/importWiki.js'
 
@@ -136,10 +136,32 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
       status = 500
       assert.match(await renderPage('/wiki/team-42'), /다시 시도/)
       status = 401
-      assert.match(await renderPage('/wiki/team-42'), /위키 비밀번호/)
+      const authentication = await renderPage('/wiki/team-42')
+      assert.match(authentication, /class="container wiki-auth-page"/)
+      assert.match(authentication, /우리만의 이야기,<br\/>비밀번호로 열어봐요\./)
+      assert.match(authentication, /src="\/design\/auth-lock.svg"/)
+      const passwordInput = authentication.match(/<input[^>]*id="wiki-password"[^>]*>/)?.[0] ?? ''
+      assert.match(passwordInput, /name="password"/)
+      assert.match(passwordInput, /type="password"/)
+      assert.match(passwordInput, /autoComplete="current-password"/)
+      assert.match(authentication, /aria-label="비밀번호 보기" aria-pressed="false"/)
+      assert.match(authentication, /비밀번호를 모르시나요/)
+      assert.doesNotMatch(authentication, /다시 시도|인증 필요/)
       status = 404
       assert.match(await renderPage('/wiki/team-42'), /요청한 위키 또는 문서를 찾을 수 없습니다/)
       status = 200
+    })
+    await t.test('password authentication preserves safe errors and disables controls during submission', async () => {
+      const { default: WikiPasswordAuth } = await server.ssrLoadModule('/src/components/auth/WikiPasswordAuth.jsx')
+      const router = createMemoryRouter([{ path: '/', element: createElement(WikiPasswordAuth, { wikiName: '인증할 위키', busy: true, error: '<script>실패</script>' }) }])
+      try {
+        const html = renderToStaticMarkup(createElement(RouterProvider, { router }))
+        assert.match(html, /인증할 위키/)
+        assert.match(html, /aria-describedby="wiki-password-help wiki-password-error" aria-invalid="true"/)
+        assert.match(html, /id="wiki-password-error" role="alert" class="upload-error">&lt;script&gt;실패&lt;\/script&gt;/)
+        assert.equal((html.match(/disabled=""/g) || []).length, 3)
+        assert.match(html, /확인 중…/)
+      } finally { router.dispose() }
     })
     await t.test('generation states reflect server-owned jobs', async () => {
       for (const [state, text] of [['PENDING', '위키를 만들고 있습니다'], ['PROCESSING', '위키를 만들고 있습니다'], ['FAILED', '문서를 만들지 못했습니다'], ['COMPLETED', '다 제작되었습니다!']]) {
@@ -166,7 +188,7 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
           { type: 'table', caption: '수정한 표', header: true, rows: [['열 제목'], ['수정한 셀[* 세 번째 주석]']] },
         ] },
       ]
-      const { default: WikiDocument } = await server.ssrLoadModule('/src/components/WikiDocument.jsx')
+      const { default: WikiDocument } = await server.ssrLoadModule('/src/components/wiki/WikiDocument.jsx')
       const html = renderToStaticMarkup(createElement(WikiDocument, { wiki }))
       assert.doesNotMatch(html, /<script>alert|<script>bad/)
       assert.match(html, /&lt;script&gt;/)
@@ -185,7 +207,7 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
     })
 
     await t.test('example JSON renders nested contents, infobox, images, shared footnotes and references', async () => {
-      const { default: WikiDocument } = await server.ssrLoadModule('/src/components/WikiDocument.jsx')
+      const { default: WikiDocument } = await server.ssrLoadModule('/src/components/wiki/WikiDocument.jsx')
       const wiki = JSON.parse(await readFile(new URL('./fixtures/wikiDocument.json', import.meta.url), 'utf8'))
       const html = renderToStaticMarkup(createElement(WikiDocument, { wiki }))
       assert.match(html, /aria-controls="details">1\.1\.1\. 세부 항목<\/button>/)
@@ -211,8 +233,34 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
 
     })
 
+    await t.test('basic information renders through WikiInfobox with overview first in contents', async () => {
+      const { default: WikiDocument } = await server.ssrLoadModule('/src/components/wiki/WikiDocument.jsx')
+      const { wiki } = parseWikiData({ title: '박건휘', content: '## 기본정보\n| 항목 | 내용 |\n|---|---|\n| 이름 | 박건휘 |\n| 나이 | 확인된 정보 없음 |\n| 출생 | 정보 없음 |\n## 개요\n소개' })
+      const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(WikiDocument, { wiki, editPath: '/edit' })))
+      assert.match(html, /class="wiki-infobox infobox-after-toc"/)
+      assert.match(html, /<th scope="row">이름<\/th><td class="wiki-text">박건휘<\/td>/)
+      assert.match(html, /aria-controls="section-2">1\. 개요<\/button>/)
+      assert.match(html, /href="\/edit\?section=section-2"/)
+      assert.doesNotMatch(html, /기본정보|정보 없음|>나이<|>출생</)
+      assert.ok(html.indexOf('class="toc"') < html.indexOf('class="wiki-infobox'))
+      assert.ok(html.indexOf('class="wiki-infobox') < html.indexOf('class="wiki-sections"'))
+    })
+
+    await t.test('conversation excerpts render as safe reusable blockquotes with links and notes', async () => {
+      const { default: WikiDocument } = await server.ssrLoadModule('/src/components/wiki/WikiDocument.jsx')
+      const { wiki } = parseWikiData({ title: '대화', content: '> 소개 대화\n## 개요\n> 첫 줄 [[다른 문서]][* 출처]\n> <script>bad()</script>\n일반 본문' })
+      const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(WikiDocument, { wiki, wikiId: 'team', pages: [{ id: 'other', title: '다른 문서' }] })))
+      assert.equal((html.match(/<blockquote class="wiki-conversation-excerpt"/g) || []).length, 2)
+      assert.match(html, /aria-label="원문 대화 발췌"/)
+      assert.match(html, /href="\/wiki\/team\/pages\/other"/)
+      assert.match(html, /id="footnote-ref-1"/)
+      assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt;/)
+      assert.match(html, /<\/blockquote><p class="wiki-text">일반 본문<\/p>/)
+      assert.doesNotMatch(html, /<script>|&gt; 첫 줄|원문 보기/)
+    })
+
     await t.test('partial and hostile JSON displays supplied text without scripts or invented document data', async () => {
-      const { default: WikiDocument } = await server.ssrLoadModule('/src/components/WikiDocument.jsx')
+      const { default: WikiDocument } = await server.ssrLoadModule('/src/components/wiki/WikiDocument.jsx')
       const { wiki } = parseWikiData({ title: '<script>title()</script>', category: '<img src=x onerror=alert(1)>',
         content: '##<script>section()</script>\n<img src=x onerror=alert(1)>[^missing]',
         infobox: { fields: [{ label: '없음' }] }, references: [{ url: 'javascript:bad' }],

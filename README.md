@@ -4,20 +4,22 @@
 
 ## 구조
 
-- `src/components/`: 헤더, 푸터, 공통 레이아웃, 경로 안내, 버튼 링크, 안내문, 태그, 위키 섹션
-- `src/components/ChatFileUpload.jsx`: `.txt` 파일 선택·드래그 앤 드롭, 읽기 상태·오류 안내, 파일 삭제
+- `src/components/common/`: 경로 안내, 버튼 링크, 안내문, 태그, 위키 URL 복사 및 API 오류 화면
+- `src/components/layout/`: 헤더, 푸터, 하단 내비게이션 및 공통 페이지 틀
+- `src/components/form/`: 대화 업로드 페이지 전용 컴포넌트
+- `src/components/wiki/`: 위키 문서 페이지 전용 렌더링 컴포넌트
+- `src/components/form/ChatFileUpload.jsx`: `.txt` 파일 선택·드래그 앤 드롭, 읽기 상태·오류 안내, 파일 삭제
 - `src/utils/readChatFile.js`: 파일 크기·확장자·내용 검사와 텍스트 읽기
-- `src/Pages/HomePage.jsx`: 서비스 소개와 페이지 이동
 - `src/Pages/FormPage.jsx`: 위키 제목 입력, 카카오톡 `.txt` 미리보기와 POST 업로드
 - `src/Pages/WikiListPage.jsx`: 접근 가능한 위키 전체 목록
 - `src/utils/wiki.js`: 공통 주석 처리
 - `src/Pages/WikiHomePage.jsx`, `src/Pages/WikiPage.jsx`: URL의 ID로 위키·문서 목록·문서 본문을 GET하여 표시
 - `src/api/queries.js`: TanStack Query 조회·캐시·생성 상태 폴링
-- `src/api/routeHandlers.js`, `src/components/WikiApiError.jsx`: 업로드·저장 action, 비밀번호 인증과 오류·재시도
-- `src/components/WikiDocument.jsx`: 제목, 계층형 목차·본문, Infobox, 주석·참고 자료를 조립하는 공통 렌더러
-- `src/components/WikiInfobox.jsx`, `src/components/WikiImage.jsx`: 주요 정보 표와 이미지
-- `src/components/Footnote.jsx`: 본문 주석 번호 링크와 마우스·키보드 포커스 툴팁, 스크린 리더용 주석 연결
-- `src/components/WikiContent.jsx`: 본문·표·목록 및 주석 표시
+- `src/api/routeHandlers.js`, `src/components/common/WikiApiError.jsx`: 업로드·저장 action, 비밀번호 인증과 오류·재시도
+- `src/components/wiki/WikiDocument.jsx`: 제목, 계층형 목차·본문, Infobox, 주석·참고 자료를 조립하는 공통 렌더러
+- `src/components/wiki/WikiInfobox.jsx`, `src/components/wiki/WikiImage.jsx`: 주요 정보 표와 이미지
+- `src/components/wiki/Footnote.jsx`: 본문 주석 번호 링크와 마우스·키보드 포커스 툴팁, 스크린 리더용 주석 연결
+- `src/components/wiki/WikiContent.jsx`: 본문·표·목록 및 주석 표시
 - `src/utils/wikiSchema.js`: 내부 데이터 검증과 URL 허용 정책
 - `src/utils/importWiki.js`: API·JSON의 title/category/content 검사와 ## 제목 기반 WikiDocument 변환
 - `public/examples/wiki.json`: API와 같은 title/category/content 입력 예시

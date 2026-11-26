@@ -2,8 +2,8 @@ import { useRecentWikis } from '../api/queries.js'
 import Skeleton from 'react-loading-skeleton'
 import { useState } from 'react'
 import { Link, useFetcher, useParams } from 'react-router'
-import ChatFileUpload from '../components/ChatFileUpload.jsx'
-import PasswordInput from '../components/PasswordInput.jsx'
+import ChatFileUpload from '../components/form/ChatFileUpload.jsx'
+import PasswordInput from '../components/common/PasswordInput.jsx'
 import { wikiPath } from '../utils/paths.js'
 
 export default function FormPage() {

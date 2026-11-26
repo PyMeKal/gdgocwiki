@@ -1,6 +1,7 @@
 import Footnote from './Footnote.jsx'
 import WikiImage from './WikiImage.jsx'
-import { isSafeUrl } from '../utils/wikiSchema.js'
+import WikiConversationExcerpt from './WikiConversationExcerpt.jsx'
+import { isSafeUrl } from '../../utils/wikiSchema.js'
 import { Link } from 'react-router'
 
 export function WikiText({ parts }) {
@@ -15,6 +16,7 @@ export function WikiText({ parts }) {
 export default function WikiContent({ blocks }) {
   return blocks.map((block, index) => {
     if (block.type === 'paragraph') return <p className="wiki-text" key={index}><WikiText parts={block.text} /></p>
+    if (block.type === 'quote') return <WikiConversationExcerpt key={index}><WikiText parts={block.text} /></WikiConversationExcerpt>
     if (block.type === 'list') {
       return <ul className="content-list" key={index}>{block.items.map((item, i) => <li className="wiki-text" key={i}><WikiText parts={item} /></li>)}</ul>
     }

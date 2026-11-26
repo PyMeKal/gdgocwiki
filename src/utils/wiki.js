@@ -2,6 +2,19 @@ import { wikiPagePath, wikiPath } from './paths.js'
 import { parseWikiBlocks } from './importWiki.js'
 export { validateWiki } from './wikiSchema.js'
 
+function basicInfoFields(section) {
+  if (section.title.replace(/\s/g, '') !== '기본정보' || section.sections?.length ||
+      !section.blocks.every((block) => block.type === 'paragraph')) return null
+  const lines = section.blocks.map((block) => block.text).join('\n').trim().split(/\r\n|\n|\r/).filter((line) => line.trim())
+  const rows = lines.map((line) => line.trim().replace(/^\|/, '').replace(/(?<!\\)\|$/, '')
+    .split(/(?<!\\)\|/).map((cell) => cell.trim().replaceAll('\\|', '|')))
+  // 표 전체를 읽을 수 있을 때만 옮겨 설명이나 잘못된 행이 사라지지 않게 합니다.
+  if (rows.length < 3 || rows.some((row) => row.length !== 2) ||
+      rows[0][0] !== '항목' || rows[0][1] !== '내용' || !rows[1].every((cell) => /^:?-{3,}:?$/.test(cell))) return null
+  return rows.slice(2).filter(([label, value]) => label && value && !/^(?:확인된)?정보없음$/.test(value.replace(/\s/g, '')))
+    .map(([label, value]) => ({ label, value }))
+}
+
 // 저장 원본은 유지하고, 화면에 필요한 섹션 번호와 주석 참조 정보를 별도 객체에 구성합니다.
 export function prepareWiki(wiki, { wikiId, pages = [] } = {}) {
   const footnotes = []
@@ -60,8 +73,19 @@ export function prepareWiki(wiki, { wikiId, pages = [] } = {}) {
     parts.push(text.slice(start))
     return parts
   }
+  let sourceInfobox = wiki.infobox
+  let sourceSections = wiki.sections
+  if (!sourceInfobox) {
+    for (const [index, section] of wiki.sections.entries()) {
+      const fields = basicInfoFields(section)
+      if (fields === null) continue
+      if (fields.length > 0) sourceInfobox = { title: wiki.title, placement: 'after-toc', fields }
+      sourceSections = wiki.sections.filter((_, sectionIndex) => sectionIndex !== index)
+      break
+    }
+  }
   // 정보 표가 본문보다 먼저 표시되므로 정보 표의 주석에 먼저 번호를 부여합니다.
-  const infobox = wiki.infobox ? { ...wiki.infobox, fields: wiki.infobox.fields.map((field) => ({ ...field, value: annotate(field.value) })) } : undefined
+  const infobox = sourceInfobox ? { ...sourceInfobox, fields: sourceInfobox.fields.map((field) => ({ ...field, value: annotate(field.value) })) } : undefined
   const description = parseWikiBlocks(wiki.description ?? '').map((block) => block.type === 'list'
     ? { ...block, items: block.items.map(annotate) }
     : { ...block, text: annotate(block.text) })
@@ -69,14 +93,14 @@ export function prepareWiki(wiki, { wikiId, pages = [] } = {}) {
     ...section,
     number: prefix ? `${prefix}.${index + 1}` : `${index + 1}`,
     blocks: section.blocks.map((block) => {
-      if (block.type === 'paragraph') return { ...block, text: annotate(block.text) }
+      if (block.type === 'paragraph' || block.type === 'quote') return { ...block, text: annotate(block.text) }
       if (block.type === 'list') return { ...block, items: block.items.map(annotate) }
       if (block.type === 'table') return { ...block, rows: block.rows.map((row) => row.map(annotate)) }
       return block
     }),
     sections: visit(section.sections || [], prefix ? `${prefix}.${index + 1}` : `${index + 1}`),
   }))
-  const sections = visit(wiki.sections)
+  const sections = visit(sourceSections)
   // 본문에서 사용하지 않은 정의도 참고용 주석으로 남겨 입력 정보를 잃지 않게 합니다.
   for (const definition of definitions.values()) {
     if (!shared.has(definition.id)) addNote(definition.content, definition.url)

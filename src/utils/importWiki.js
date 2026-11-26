@@ -2,15 +2,20 @@ import { validateWiki } from './wikiSchema.js'
 
 const maxBytes = 5 * 1024 * 1024
 const sectionHeading = /^(?:##(?!#)[ \t]*([^\r\n]*)|[ \t]*(={2})(?!=)([^\r\n]*?[^=\r\n])\2(?!=)[ \t]*)(?:\r\n|\n|\r|$)/gm
-const listItem = /^[ \t]*\*[ \t]+([^\r\n]*)(?:\r\n|\n|\r|$)/gm
+const blockLine = /^[ \t]*(?:\*[ \t]+([^\r\n]*)|>[ \t]?([^\r\n]*))(?:\r\n|\n|\r|$)/gm
 
 export function parseWikiBlocks(text) {
   const blocks = []
   let start = 0
-  for (const match of text.matchAll(listItem)) {
+  for (const match of text.matchAll(blockLine)) {
     if (match.index > start) blocks.push({ type: 'paragraph', text: text.slice(start, match.index) })
-    if (blocks.at(-1)?.type !== 'list') blocks.push({ type: 'list', items: [] })
-    blocks.at(-1).items.push(match[1])
+    if (match[1] !== undefined) {
+      if (blocks.at(-1)?.type !== 'list') blocks.push({ type: 'list', items: [] })
+      blocks.at(-1).items.push(match[1])
+    } else {
+      if (blocks.at(-1)?.type === 'quote') blocks.at(-1).text += `\n${match[2]}`
+      else blocks.push({ type: 'quote', text: match[2] })
+    }
     start = match.index + match[0].length
   }
   if (start < text.length || blocks.length === 0) blocks.push({ type: 'paragraph', text: text.slice(start) })

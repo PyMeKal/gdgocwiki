@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react'
-import { readChatFile } from '../utils/readChatFile.js'
+import { readChatFile } from '../../utils/readChatFile.js'
 
 export default function ChatFileUpload({ value, onChange, disabled = false }) {
   const inputId = useId()
@@ -60,7 +60,7 @@ export default function ChatFileUpload({ value, onChange, disabled = false }) {
           name="chat"
           type="file"
           disabled={disabled}
-          accept=".txt,text/plain"
+          accept="../.txt,text/plain"
           aria-describedby={`${inputId}-help${error ? ` ${inputId}-error` : ''}`}
           aria-invalid={Boolean(error)}
           onChange={(event) => loadFiles(event.target.files)}

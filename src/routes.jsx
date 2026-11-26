@@ -2,18 +2,16 @@ import { Link } from 'react-router'
 import App from './App.jsx'
 import GenerationPage from './Pages/GenerationPage.jsx'
 import FormPage from './Pages/FormPage.jsx'
-// import HomePage from './Pages/HomePage.jsx'
 import WikiHomePage from './Pages/WikiHomePage.jsx'
 import WikiPage from './Pages/WikiPage.jsx'
 import WikiListPage from './Pages/WikiListPage.jsx'
-import WikiApiError from './components/WikiApiError.jsx'
+import WikiApiError from './components/common/WikiApiError.jsx'
 import { pageEditAction, unlockAction, uploadAction } from './api/routeHandlers.js'
 import WikiPageEditPage from './Pages/WikiPageEditPage.jsx'
 
 export const createRoutes = (client) => [{
   element: <App />,
   children: [
-    // { path: '/', element: <HomePage /> },
     { path: '/', element: <FormPage />, action: (args) => uploadAction(args, client) },
     { path: '/wikis', element: <WikiListPage />, errorElement: <WikiApiError /> },
     { path: '/wiki/:wikiId', element: <WikiHomePage />, action: (args) => unlockAction(args, client), errorElement: <WikiApiError /> },
