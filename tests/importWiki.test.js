@@ -7,6 +7,43 @@ import { isSafeUrl } from '../src/utils/wikiSchema.js'
 
 const page = (content, extra = {}) => ({ title: '문서', category: 'EVENT', content, ...extra })
 
+test('basic information becomes an infobox and overview keeps its original editing anchor', () => {
+  const content = '## 기본정보\n| 항목 | 내용 |\n|---|---|\n| 이름 | 박건휘 |\n| 나이 | 확인된 정보 없음 |\n| 출생 | 정보 없음 |\n| 직업 | 개발자 [[다른 문서]][* 직업 출처] |\n\n## 개요\n소개[* 본문 출처]\n## 활동\n활동 본문'
+  const { wiki } = parseWikiData(page(content))
+  const original = structuredClone(wiki)
+  const prepared = prepareWiki(wiki, { wikiId: 'team', pages: [{ id: 'other', title: '다른 문서' }] })
+  assert.equal(prepared.infobox.title, '문서')
+  assert.equal(prepared.infobox.placement, 'after-toc')
+  assert.deepEqual(prepared.infobox.fields.map(({ label }) => label), ['이름', '직업'])
+  assert.deepEqual(prepared.infobox.fields[0].value, ['박건휘'])
+  assert.equal(prepared.infobox.fields[1].value[1].type, 'wikiLink')
+  assert.deepEqual(prepared.footnotes.map(({ content }) => content), ['직업 출처', '본문 출처'])
+  assert.deepEqual(prepared.sections.map(({ id, number, title }) => [id, number, title]), [
+    ['section-2', '1', '개요'], ['section-3', '2', '활동'],
+  ])
+  assert.equal(getPageSection(content, prepared.sections[0].id).content, '## 개요\n소개[* 본문 출처]\n')
+  assert.deepEqual(wiki, original)
+})
+
+test('empty basic information is hidden while malformed tables and additional prose are preserved', () => {
+  for (const heading of ['## 기본정보', '== 기본 정보 ==', '===기본정보===']) {
+    const wiki = parseWikiData(page(`${heading}\r\n| 항목 | 내용 |\r\n|:---|---:|\r\n| 나이 | 확인된 정보 없음 |\r\n| 출생 | 정보 없음 |\r\n| 별명 | |\r\n## 개요\r\n본문`)).wiki
+    const prepared = prepareWiki(wiki)
+    assert.equal(prepared.infobox, undefined)
+    assert.equal(prepared.sections[0].title, '개요')
+    assert.equal(prepared.sections[0].number, '1')
+  }
+  for (const body of [
+    '| 항목 | 내용 |\n|---|---|\n| 이름 | 값 | 추가 셀 |',
+    '| 항목 | 내용 |\n|---|---|\n| 이름 | 값 |\n추가 설명',
+    '일반 본문',
+  ]) {
+    const prepared = prepareWiki(parseWikiData(page(`## 기본정보\n${body}`)).wiki)
+    assert.equal(prepared.infobox, undefined)
+    assert.equal(prepared.sections[0].title, '기본정보')
+  }
+})
+
 test('API JSON becomes a WikiDocument with numbered sections and category', async () => {
   const text = await readFile(new URL('../public/examples/wiki.json', import.meta.url), 'utf8')
   const raw = JSON.parse(text)

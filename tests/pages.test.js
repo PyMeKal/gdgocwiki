@@ -11,7 +11,7 @@ import { createServer } from 'vite'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
 import { defaultWiki } from './fixtures/wiki.js'
 import { parseWikiData } from '../src/utils/importWiki.js'
 
@@ -189,6 +189,19 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
       wiki.infobox.placement = 'right'
       assert.match(renderToStaticMarkup(createElement(WikiDocument, { wiki })), /class="wiki-infobox infobox-right"/)
 
+    })
+
+    await t.test('basic information renders through WikiInfobox with overview first in contents', async () => {
+      const { default: WikiDocument } = await server.ssrLoadModule('/src/components/WikiDocument.jsx')
+      const { wiki } = parseWikiData({ title: '박건휘', content: '## 기본정보\n| 항목 | 내용 |\n|---|---|\n| 이름 | 박건휘 |\n| 나이 | 확인된 정보 없음 |\n| 출생 | 정보 없음 |\n## 개요\n소개' })
+      const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(WikiDocument, { wiki, editPath: '/edit' })))
+      assert.match(html, /class="wiki-infobox infobox-after-toc"/)
+      assert.match(html, /<th scope="row">이름<\/th><td class="wiki-text">박건휘<\/td>/)
+      assert.match(html, /aria-controls="section-2">1\. 개요<\/button>/)
+      assert.match(html, /href="\/edit\?section=section-2"/)
+      assert.doesNotMatch(html, /기본정보|정보 없음|>나이<|>출생</)
+      assert.ok(html.indexOf('class="toc"') < html.indexOf('class="wiki-infobox'))
+      assert.ok(html.indexOf('class="wiki-infobox') < html.indexOf('class="wiki-sections"'))
     })
 
     await t.test('partial and hostile JSON displays supplied text without scripts or invented document data', async () => {
