@@ -1,9 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useRecentWikis } from '../api/queries.js'
-import WikiApiError from '../components/WikiApiError.jsx'
+import WikiApiError from '../components/common/WikiApiError.jsx'
 import Skeleton from 'react-loading-skeleton'
 import { Link } from 'react-router'
-import ButtonLink from '../components/ButtonLink.jsx'
+import ButtonLink from '../components/common/ButtonLink.jsx'
 import { wikiPath } from '../utils/paths.js'
 
 export default function WikiListPage() {

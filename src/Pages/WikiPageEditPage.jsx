@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { editPageQuery } from '../api/queries.js'
-import WikiApiError from '../components/WikiApiError.jsx'
+import WikiApiError from '../components/common/WikiApiError.jsx'
 import Skeleton from 'react-loading-skeleton'
 import { useEffect, useState } from 'react'
 import { Form, Link, useActionData, useBlocker, useNavigation, useParams, useSearchParams } from 'react-router'
-import Breadcrumb from '../components/Breadcrumb.jsx'
-import ButtonLink from '../components/ButtonLink.jsx'
-import Notice from '../components/Notice.jsx'
+import Breadcrumb from '../components/common/Breadcrumb.jsx'
+import ButtonLink from '../components/common/ButtonLink.jsx'
+import Notice from '../components/common/Notice.jsx'
 import { wikiPagePath } from '../utils/paths.js'
 
 function PageEditor({ page, editContent, sectionId, returnPath }) {

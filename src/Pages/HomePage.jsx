@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
-import ButtonLink from '../components/ButtonLink.jsx'
-import Tag from '../components/Tag.jsx'
+import ButtonLink from '../components/common/ButtonLink.jsx'
+import Tag from '../components/common/Tag.jsx'
 import { wikiPagePath, wikiPath } from '../utils/paths.js'
 
 export default function HomePage() {

@@ -17,7 +17,7 @@ export const isLink = (link) => link && isSafeUrl(link.url) && typeof link.label
 
 export function isWikiBlock(block) {
   return !!block && (
-    (block.type === 'paragraph' && typeof block.text === 'string') ||
+    (['paragraph', 'quote'].includes(block.type) && typeof block.text === 'string') ||
     (block.type === 'list' && strings(block.items)) ||
     (block.type === 'image' && isImage(block)) ||
     (block.type === 'link' && isLink(block)) ||

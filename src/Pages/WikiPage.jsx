@@ -1,11 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { wikiQuery, pageQuery, pageTitlesQuery } from '../api/queries.js'
-import WikiApiError from '../components/WikiApiError.jsx'
+import WikiApiError from '../components/common/WikiApiError.jsx'
 import Skeleton from 'react-loading-skeleton'
 import { Link, useParams } from 'react-router'
-import CopyWikiUrlButton from '../components/CopyWikiUrlButton.jsx'
-import Breadcrumb from '../components/Breadcrumb.jsx'
-import WikiDocument from '../components/WikiDocument.jsx'
+import CopyWikiUrlButton from '../components/common/CopyWikiUrlButton.jsx'
+import Breadcrumb from '../components/common/Breadcrumb.jsx'
+import WikiDocument from '../components/wiki/WikiDocument.jsx'
 import { wikiPagePath, wikiPath } from '../utils/paths.js'
 
 export default function WikiPage() {

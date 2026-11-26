@@ -6,7 +6,7 @@ import FormPage from './Pages/FormPage.jsx'
 import WikiHomePage from './Pages/WikiHomePage.jsx'
 import WikiPage from './Pages/WikiPage.jsx'
 import WikiListPage from './Pages/WikiListPage.jsx'
-import WikiApiError from './components/WikiApiError.jsx'
+import WikiApiError from './components/common/WikiApiError.jsx'
 import { pageEditAction, unlockAction, uploadAction } from './api/routeHandlers.js'
 import WikiPageEditPage from './Pages/WikiPageEditPage.jsx'
 

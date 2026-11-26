@@ -1,11 +1,42 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { getPageSection, parseWikiData } from '../src/utils/importWiki.js'
+import { getPageSection, parseWikiBlocks, parseWikiData } from '../src/utils/importWiki.js'
 import { prepareWiki, validateWiki } from '../src/utils/wiki.js'
 import { isSafeUrl } from '../src/utils/wikiSchema.js'
 
 const page = (content, extra = {}) => ({ title: '문서', category: 'EVENT', content, ...extra })
+
+test('quote lines group into conversation excerpts without consuming prose or lists', () => {
+  const content = '## 개요\r\n일반 문장 > 비교\r\n> 첫 대화\r\n >둘째 대화\r\n>\r\n> 마지막 대화\r\n일반 본문\n* 목록\n> 다른 대화\n\n> 분리된 대화\n\\> 일반 텍스트'
+  const raw = page(content)
+  const original = structuredClone(raw)
+  const { wiki } = parseWikiData(raw)
+  assert.deepEqual(wiki.sections[0].blocks, [
+    { type: 'paragraph', text: '일반 문장 > 비교\r\n' },
+    { type: 'quote', text: '첫 대화\n둘째 대화\n\n마지막 대화' },
+    { type: 'paragraph', text: '일반 본문\n' },
+    { type: 'list', items: ['목록'] },
+    { type: 'quote', text: '다른 대화' },
+    { type: 'paragraph', text: '\n' },
+    { type: 'quote', text: '분리된 대화' },
+    { type: 'paragraph', text: '\\> 일반 텍스트' },
+  ])
+  assert.deepEqual(raw, original)
+  assert.equal(getPageSection(content, 'section-1').content, content)
+  assert.deepEqual(parseWikiBlocks(JSON.parse('"\\u003e 대화"')), [{ type: 'quote', text: '대화' }])
+  assert.deepEqual(parseWikiBlocks('> 하나\r> 둘'), [{ type: 'quote', text: '하나\n둘' }])
+})
+
+test('conversation excerpts preserve wiki links and footnotes in both introduction and sections', () => {
+  const { wiki } = parseWikiData(page('> 소개[* 소개 주석]\n## 개요\n> [[다른 문서]][* 대화 주석]\n본문[* 본문 주석]'))
+  const prepared = prepareWiki(wiki, { wikiId: 'team', pages: [{ id: 'other', title: '다른 문서' }] })
+  assert.equal(prepared.description[0].type, 'quote')
+  assert.equal(prepared.description[0].text[1].number, 1)
+  assert.deepEqual(prepared.sections[0].blocks[0].text[1], { type: 'wikiLink', label: '다른 문서', to: '/wiki/team/pages/other' })
+  assert.deepEqual(prepared.footnotes.map(({ content }) => content), ['소개 주석', '대화 주석', '본문 주석'])
+  assert.throws(() => validateWiki({ ...wiki, sections: [{ id: 'invalid', title: '', blocks: [{ type: 'quote', text: 123 }] }] }))
+})
 
 test('basic information becomes an infobox and overview keeps its original editing anchor', () => {
   const content = '## 기본정보\n| 항목 | 내용 |\n|---|---|\n| 이름 | 박건휘 |\n| 나이 | 확인된 정보 없음 |\n| 출생 | 정보 없음 |\n| 직업 | 개발자 [[다른 문서]][* 직업 출처] |\n\n## 개요\n소개[* 본문 출처]\n## 활동\n활동 본문'

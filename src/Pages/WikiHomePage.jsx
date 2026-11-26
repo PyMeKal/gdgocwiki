@@ -1,10 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { wikiQuery, pagesQuery } from '../api/queries.js'
-import WikiApiError from '../components/WikiApiError.jsx'
+import WikiApiError from '../components/common/WikiApiError.jsx'
 import Skeleton from 'react-loading-skeleton'
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import CopyWikiUrlButton from '../components/CopyWikiUrlButton.jsx'
+import CopyWikiUrlButton from '../components/common/CopyWikiUrlButton.jsx'
 import { wikiPagePath} from '../utils/paths.js'
 import { filterPages } from '../utils/filterPages.js'
 

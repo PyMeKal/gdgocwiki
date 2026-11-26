@@ -1,7 +1,7 @@
 import Skeleton from 'react-loading-skeleton'
 import { Link } from 'react-router'
 import { useState } from 'react'
-import { prepareWiki } from '../utils/wiki.js'
+import { prepareWiki } from '../../utils/wiki.js'
 import WikiContent from './WikiContent.jsx'
 import WikiInfobox from './WikiInfobox.jsx'
 import WikiSection from './WikiSection.jsx'

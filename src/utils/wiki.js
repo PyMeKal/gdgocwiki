@@ -93,7 +93,7 @@ export function prepareWiki(wiki, { wikiId, pages = [] } = {}) {
     ...section,
     number: prefix ? `${prefix}.${index + 1}` : `${index + 1}`,
     blocks: section.blocks.map((block) => {
-      if (block.type === 'paragraph') return { ...block, text: annotate(block.text) }
+      if (block.type === 'paragraph' || block.type === 'quote') return { ...block, text: annotate(block.text) }
       if (block.type === 'list') return { ...block, items: block.items.map(annotate) }
       if (block.type === 'table') return { ...block, rows: block.rows.map((row) => row.map(annotate)) }
       return block

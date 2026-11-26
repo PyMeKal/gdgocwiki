@@ -21,6 +21,8 @@
   --color-article-button-background: #eee9f8;
   --color-article-toc-background: #f6f5f8;
   --color-article-table-background: #f2effa;
+  --color-conversation-background: #f6f5f7;
+  --color-conversation-text: #292632;
   /* 상태 및 공통 문서 요소 */
   --color-error: #a32929;
   --color-focus: #a57921;
