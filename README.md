@@ -32,8 +32,11 @@
 
 ```sh
 npm install
+cp .env.example .env.local
 npm run dev
 ```
+
+처음 실행하기 전에 `.env.local`의 `API_PROXY_TARGET`에 백엔드 주소를 입력하세요. 비어 있으면 로컬 API 프록시가 비활성화됩니다. `.env.local`은 Git에서 제외됩니다.
 
 React Router의 `Link`·`NavLink`로 전체 새로고침 없이 이동하며 뒤로·앞으로 가기를 지원합니다.
 
@@ -58,7 +61,7 @@ React Router의 `Link`·`NavLink`로 전체 새로고침 없이 이동하며 뒤
 API 문서 제목 옆 **편집** 버튼은 전체 본문을, 각 섹션 옆 **편집** 버튼은 해당 섹션만 편집합니다. 섹션 제목은 `## 제목` 형식입니다. **편집 완료** 시 `PATCH /wikis/:wikiId/pages/:pageId`에 `{ content, version }`을 전송하고 원래 문서로 돌아갑니다. 저장 실패·버전 충돌 시 입력은 유지됩니다.
 
 기존 `?page=...` 주소는 사용하지 않습니다.
-Vite 개발·preview 서버는 위 주소를 직접 열거나 새로고침할 수 있습니다. 배포 서버에서도 `/wiki/...` 등 파일이 없는 화면 경로를 `index.html`로 보내는 SPA fallback 설정이 필요하며, 정적 파일과 실제 API 경로는 그대로 제공해야 합니다. 자산 경로는 루트(`/`) 기준입니다.
+Vite 개발·preview 서버는 위 주소를 직접 열거나 새로고침할 수 있습니다.
 기존 개별 HTML 페이지는 사용하지 않습니다.
 
 ```sh
@@ -68,7 +71,7 @@ npm run build
 npm run preview
 ```
 
-배포용 파일은 `dist/`에 생성됩니다. `index.html`을 직접 여는 대신 개발·미리보기 서버를 사용해주세요.
+`index.html`을 직접 여는 대신 개발·미리보기 서버를 사용해주세요.
 
 ## 문서 데이터와 주석
 
@@ -122,18 +125,9 @@ UTF-8, BOM이 있는 UTF-16, EUC-KR 텍스트를 읽을 수 있습니다. 실제
 
 ## 백엔드 API
 
-[Swagger 명세서](http://211.233.208.44/swagger/index.html#/)를 기준으로 `src/api/wikis.js`에서 API를 호출합니다. 백엔드 주소는 `http://211.233.208.44`입니다.
+백엔드의 Swagger 명세서를 기준으로 `src/api/wikis.js`에서 API를 호출합니다. 로컬 백엔드 주소는 `.env.local`의 `API_PROXY_TARGET`으로 지정합니다.
 
 기본 API 경로는 `/api`입니다. `npm run dev` 및 `npm run preview`에서는 Vite 프록시가 `/api/wikis/...`를 백엔드의 `/wikis/...`로 전달합니다. 브라우저는 같은 origin으로 요청하므로 개발 중 CORS와 교차 사이트 쿠키 제한을 피할 수 있습니다. 쿠키는 `credentials: 'include'`로 전달하고 multipart의 Content-Type은 브라우저가 설정합니다.
-
-배포 시에도 **화면과 같은 origin의 `/api`를 백엔드로 프록시**하고 `/api` 접두어를 제거해야 합니다. Vite 설정은 정적 배포 서버에 적용되지 않습니다. 예시 Nginx 설정은 다음과 같습니다.
-
-```nginx
-location /api/ {
-    proxy_pass http://211.233.208.44/;
-    proxy_set_header Host $proxy_host;
-}
-```
 
 `.env.example`의 `VITE_API_BASE_URL`로 API 주소를 바꿀 수 있으며 변경 후 서버 재시작·재빌드가 필요합니다. 외부 URL을 직접 지정하면 서버의 CORS·쿠키 정책이 이를 허용해야 하고, HTTPS 화면에서 HTTP API를 직접 호출하면 브라우저가 차단합니다.
 
