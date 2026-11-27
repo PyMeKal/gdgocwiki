@@ -2,41 +2,13 @@
 
 카카오톡 대화를 API로 업로드하고, URL의 위키·문서 ID로 API 데이터를 조회하는 React 서비스입니다.
 
-## 구조
-
-- `src/components/common/`: 경로 안내, 버튼 링크, 안내문, 태그, 위키 URL 복사 및 API 오류 화면
-- `src/components/layout/`: 헤더, 푸터, 하단 내비게이션 및 공통 페이지 틀
-- `src/components/form/`: 대화 업로드 페이지 전용 컴포넌트
-- `src/components/wiki/`: 위키 문서 페이지 전용 렌더링 컴포넌트
-- `src/components/form/ChatFileUpload.jsx`: `.txt` 파일 선택·드래그 앤 드롭, 읽기 상태·오류 안내, 파일 삭제
-- `src/utils/readChatFile.js`: 파일 크기·확장자·내용 검사와 텍스트 읽기
-- `src/Pages/FormPage.jsx`: 위키 제목 입력, 카카오톡 `.txt` 미리보기와 POST 업로드
-- `src/Pages/WikiListPage.jsx`: 접근 가능한 위키 전체 목록
-- `src/utils/wiki.js`: 공통 주석 처리
-- `src/Pages/WikiHomePage.jsx`, `src/Pages/WikiPage.jsx`: URL의 ID로 위키·문서 목록·문서 본문을 GET하여 표시
-- `src/api/queries.js`: TanStack Query 조회·캐시·생성 상태 폴링
-- `src/api/routeHandlers.js`, `src/components/common/WikiApiError.jsx`: 업로드·저장 action, 비밀번호 인증과 오류·재시도
-- `src/components/wiki/WikiDocument.jsx`: 제목, 계층형 목차·본문, Infobox, 주석·참고 자료를 조립하는 공통 렌더러
-- `src/components/wiki/WikiInfobox.jsx`, `src/components/wiki/WikiImage.jsx`: 주요 정보 표와 이미지
-- `src/components/wiki/Footnote.jsx`: 본문 주석 번호 링크와 마우스·키보드 포커스 툴팁, 스크린 리더용 주석 연결
-- `src/components/wiki/WikiContent.jsx`: 본문·표·목록 및 주석 표시
-- `src/utils/wikiSchema.js`: 내부 데이터 검증과 URL 허용 정책
-- `src/utils/importWiki.js`: API·JSON의 title/category/content 검사와 ## 제목 기반 WikiDocument 변환
-- `public/examples/wiki.json`: API와 같은 title/category/content 입력 예시
-- `src/routes.jsx`: React Router 경로와 페이지 연결
-- `src/App.jsx`: 공통 레이아웃, 하위 페이지와 스크롤 복원
-- `src/index.css`: 공통 스타일과 모바일 화면 대응
-- `index.html`: React 앱을 실행하는 단일 진입점
 
 ## 실행
 
 ```sh
 npm install
-cp .env.example .env.local
 npm run dev
 ```
-
-처음 실행하기 전에 `.env.local`의 `API_PROXY_TARGET`에 백엔드 주소를 입력하세요. 비어 있으면 로컬 API 프록시가 비활성화됩니다. `.env.local`은 Git에서 제외됩니다.
 
 React Router의 `Link`·`NavLink`로 전체 새로고침 없이 이동하며 뒤로·앞으로 가기를 지원합니다.
 
@@ -52,13 +24,6 @@ React Router의 `Link`·`NavLink`로 전체 새로고침 없이 이동하며 뒤
 | 문서 제작 대기·완료 | `/wiki/:wikiId/generations/:jobId` |
 | 대화 추가 | `/wiki/:wikiId/import` |
 
-예시 위키 ID는 `550e8400-e29b-41d4-a716-446655440000`, 문서 ID는 `page_001`입니다. 경로는 `src/utils/paths.js`에서 구성하며 문서 조회·편집·돌아가기 링크는 현재 URL의 ID를 유지합니다.
-`My wikis`는 이 브라우저에서 생성·방문한 위키 ID를 기록하고 각각 `GET /wikis/:wikiId`로 조회합니다. 인증이 풀리거나 삭제된 위키는 제외합니다. 전체 위키 목록 API는 없으므로 다른 브라우저에서만 방문한 위키는 표시할 수 없습니다.
-위키 홈은 `GET /wikis/:wikiId`와 `GET /wikis/:wikiId/pages`, 문서 화면은 `GET /wikis/:wikiId`와 `GET /wikis/:wikiId/pages/:pagesId`를 호출합니다. 목록의 문서를 누르면 응답의 문서 ID로 이동합니다. 로딩, 빈 목록, 404·네트워크 오류와 재시도를 표시하며 로컬 예시 데이터로 대체하지 않습니다.
-비밀번호가 필요한 위키는 인증 폼을 표시하고 `POST /wikis/:wikiId/unlock` 성공 후 다시 조회합니다.
-생성 폼의 선택 항목인 **위키 비밀번호**를 입력하면 보호된 위키를 생성합니다. 생성 직후에는 입력한 비밀번호로 인증하여 업로드와 문서 생성을 진행하며, 인증되지 않은 브라우저에서는 위키·문서·편집·생성 작업 화면에 접속할 때 비밀번호를 요구합니다. 비워두면 공개 위키를 생성합니다.
-문서 응답의 `title`, `category`, `content`를 `WikiDocument` 형식으로 변환합니다. `content`에서 줄 처음의 `##개요`·`## 개요`를 섹션 제목으로 읽고, 다음 `##` 전까지의 내용을 해당 섹션의 본문으로 표시합니다. 목차·섹션 번호·링크는 기존 렌더러가 생성합니다.
-API 문서 제목 옆 **편집** 버튼은 전체 본문을, 각 섹션 옆 **편집** 버튼은 해당 섹션만 편집합니다. 섹션 제목은 `## 제목` 형식입니다. **편집 완료** 시 `PATCH /wikis/:wikiId/pages/:pageId`에 `{ content, version }`을 전송하고 원래 문서로 돌아갑니다. 저장 실패·버전 충돌 시 입력은 유지됩니다.
 
 기존 `?page=...` 주소는 사용하지 않습니다.
 Vite 개발·preview 서버는 위 주소를 직접 열거나 새로고침할 수 있습니다.
@@ -125,7 +90,7 @@ UTF-8, BOM이 있는 UTF-16, EUC-KR 텍스트를 읽을 수 있습니다. 실제
 
 ## 백엔드 API
 
-백엔드의 Swagger 명세서를 기준으로 `src/api/wikis.js`에서 API를 호출합니다. 로컬 백엔드 주소는 `.env.local`의 `API_PROXY_TARGET`으로 지정합니다.
+[Swagger 명세서](http://211.233.208.44/swagger/index.html#/)를 기준으로 `src/api/wikis.js`에서 API를 호출합니다. 백엔드 주소는 `http://211.233.208.44`입니다.
 
 기본 API 경로는 `/api`입니다. `npm run dev` 및 `npm run preview`에서는 Vite 프록시가 `/api/wikis/...`를 백엔드의 `/wikis/...`로 전달합니다. 브라우저는 같은 origin으로 요청하므로 개발 중 CORS와 교차 사이트 쿠키 제한을 피할 수 있습니다. 쿠키는 `credentials: 'include'`로 전달하고 multipart의 Content-Type은 브라우저가 설정합니다.
 
