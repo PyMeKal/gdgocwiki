@@ -10,7 +10,7 @@ import { mockAxios } from './helpers/mockAxios.js'
 import * as api from '../src/api/wikis.js'
 import { pageEditAction, uploadAction } from '../src/api/routeHandlers.js'
 
-import { createQueryClient, editPageQuery, generationQuery } from '../src/api/queries.js'
+import { createQueryClient, editPageQuery, generationQuery, pagesQuery } from '../src/api/queries.js'
 
 const client = createQueryClient()
 const originalAdapter = axios.defaults.adapter
@@ -83,6 +83,75 @@ test('valid JSON response values are preserved regardless of content type', asyn
     mockAxios(async () => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'text/plain' } }))
     assert.deepEqual(await api.getChats(wiki.id), value)
   }
+})
+
+test('wiki responses are validated before updating recent history', async (t) => {
+  const writes = []
+  const originalWindow = globalThis.window
+  t.after(() => {
+    if (originalWindow === undefined) delete globalThis.window
+    else globalThis.window = originalWindow
+  })
+  globalThis.window = { localStorage: {
+    getItem: () => '["existing"]',
+    setItem: (...args) => writes.push(args),
+  } }
+  for (const invalid of [[], {}, { ...wiki, id: ' ' }, { ...wiki, name: null },
+    { ...wiki, name: 'x'.repeat(101) }, { ...wiki, hasPassword: 'false' },
+    { ...wiki, updatedAt: 'not-a-date' }]) {
+    for (const invoke of [() => api.getWiki(wiki.id), () => api.createWiki({ name: '위키' }),
+      () => api.updateWiki(wiki.id, { name: '변경' })]) {
+      respond(invalid)
+      await assert.rejects(invoke(), { message: '위키 응답 형식이 올바르지 않습니다.' })
+    }
+  }
+  assert.deepEqual(writes, [])
+  respond(wiki, 204)
+  await assert.rejects(api.getWiki(wiki.id), /위키 응답 형식/)
+  const valid = { ...wiki, extra: 'preserved', updatedAt: null }
+  respond(valid)
+  assert.deepEqual(await api.getWiki(wiki.id), valid)
+  assert.deepEqual(JSON.parse(writes[0][1]), [wiki.id, 'existing'])
+})
+
+test('invalid page lists never replace cached documents', async () => {
+  const options = { ...pagesQuery(wiki.id, client), staleTime: 0 }
+  const valid = { pages: [{ id: 'page', title: '문서', category: null, updatedAt: '2026-11-20T00:00:00Z' }] }
+  respond(valid)
+  const cached = await client.fetchQuery(options)
+  for (const invalid of [{}, { pages: null }, { pages: {} }, { pages: [null] },
+    { pages: [{ title: '문서' }] }, { pages: [{ id: 'page', title: {} }] },
+    { pages: [{ id: 'page', title: '문서', category: [] }] },
+    { pages: [{ id: 'page', title: '문서', updatedAt: 'invalid' }] }]) {
+    respond(invalid)
+    await assert.rejects(client.fetchQuery(options), /문서 목록 응답 형식/)
+    assert.deepEqual(client.getQueryData(options.queryKey), cached)
+  }
+  respond({ pages: [] })
+  assert.deepEqual(await api.getPages(wiki.id), { pages: [] })
+})
+
+test('generation response validation rejects missing IDs and invalid counts before side effects', async () => {
+  for (const invalid of [{}, { jobId: null }, { jobId: '' }, { jobId: 'job', status: 'UNKNOWN' }]) {
+    respond(invalid)
+    await assert.rejects(api.generatePages(wiki.id, {}), /생성 요청 응답 형식/)
+  }
+  const pagesKey = ['wiki', wiki.id, 'pages']
+  client.setQueryData(pagesKey, [page])
+  const options = { ...generationQuery(wiki.id, 'job', client), staleTime: 0 }
+  for (const invalid of [{}, { status: 'UNKNOWN' }, { status: 'COMPLETED' },
+    { status: 'COMPLETED', createdPages: '1', updatedPages: 0 },
+    { status: 'COMPLETED', createdPages: -1, updatedPages: 0 },
+    { status: 'COMPLETED', createdPages: 1.5, updatedPages: 0 },
+    { status: 'PROCESSING', updatedPages: null }]) {
+    respond(invalid)
+    await assert.rejects(client.fetchQuery(options), /생성 작업 상태 응답 형식/)
+    assert.equal(client.getQueryState(pagesKey).isInvalidated, false)
+    assert.equal(options.refetchInterval({ state: { error: new Error('invalid response') } }), false)
+  }
+  respond({ status: 'COMPLETED', createdPages: 0, updatedPages: 0 })
+  await client.fetchQuery(options)
+  assert.equal(client.getQueryState(pagesKey).isInvalidated, true)
 })
 
 test('development requests log each outcome once without exposing payloads or server messages', async (t) => {
@@ -197,7 +266,7 @@ test('upload action authenticates before upload and generation; invalid files se
   mockAxios(async (url, options) => {
     methods.push(`${options.method} ${url}`)
     if (url.endsWith('/unlock')) return new Response(null, { status: 204 })
-    return Response.json(url.endsWith('/generations') ? { jobId: 'job' } : url.endsWith('/chats') ? { id: 'chat' } : { id: 'created' })
+    return Response.json(url.endsWith('/generations') ? { jobId: 'job' } : url.endsWith('/chats') ? { id: 'chat' } : { id: 'created', name: '테스트' })
   })
   const submit = () => uploadAction({ request: new Request('http://localhost/', { method: 'POST', body: form }) }, client)
   assert.equal((await submit()).headers.get('Location'), '/wiki/created/generations/job')
@@ -224,7 +293,7 @@ test('upload action sends the trimmed file even when given an oversized original
       assert.equal(await file.text(), recent)
       uploaded = true
     }
-    return Response.json(url.endsWith('/generations') ? { jobId: 'job' } : url.endsWith('/chats') ? { id: 'chat' } : { id: 'created' })
+    return Response.json(url.endsWith('/generations') ? { jobId: 'job' } : url.endsWith('/chats') ? { id: 'chat' } : { id: 'created', name: '용량 테스트' })
   })
   const result = await uploadAction({ request: new Request('http://localhost/', { method: 'POST', body: form }) }, client)
   assert.equal(result.headers.get('Location'), '/wiki/created/generations/job')

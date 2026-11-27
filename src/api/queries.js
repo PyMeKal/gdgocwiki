@@ -63,7 +63,6 @@ export const generationQuery = (wikiId, jobId, client) => ({
   queryKey: ['wiki', wikiId, 'generations', jobId],
   queryFn: async () => {
     const job = await getGeneration(wikiId, jobId)
-    if (!['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'].includes(job.status)) throw new Error('생성 작업 상태가 올바르지 않습니다.')
     if (job.status === 'COMPLETED') await client.invalidateQueries({ queryKey: ['wiki', wikiId, 'pages'] })
     return job
   },
