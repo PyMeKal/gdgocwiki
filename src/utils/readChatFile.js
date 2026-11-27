@@ -1,9 +1,8 @@
+import { MAX_CHAT_FILE_BYTES, trimChatText } from './trimChatText.js'
+
 export async function readChatFile(file) {
   if (!/\.txt$/i.test(file.name)) {
     throw new Error('카카오톡에서 내보낸 .txt 파일을 선택해주세요.')
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    throw new Error('5MB 이하의 파일을 선택해주세요.')
   }
 
   let bytes
@@ -29,5 +28,9 @@ export async function readChatFile(file) {
   if (!text.trim()) throw new Error('내용이 비어 있는 파일입니다.')
   if (text.includes('\0')) throw new Error('텍스트 파일이 아닙니다. 대화 .txt 파일을 선택해주세요.')
 
-  return { file, text }
+  if (file.size <= MAX_CHAT_FILE_BYTES) return { file, text }
+
+  const trimmedText = trimChatText(text)
+  const trimmedFile = new File([trimmedText], file.name, { type: 'text/plain', lastModified: file.lastModified })
+  return { file: trimmedFile, text: trimmedText, originalSize: file.size }
 }

@@ -65,9 +65,9 @@ export default function ChatFileUpload({ value, onChange, disabled = false }) {
           aria-invalid={Boolean(error)}
           onChange={(event) => loadFiles(event.target.files)}
         />
-        <p id={`${inputId}-help`} className="file-help muted small">지원 형식: .txt · 최대 5MB · 한 번에 한 파일</p>
+        <p id={`${inputId}-help`} className="file-help muted small">지원 형식: .txt · 한 번에 한 파일 · 5MB 초과 시 최근 대화만 5MB 이하로 남깁니다.</p>
         <p className="upload-status small" role="status">
-          {isReading ? '대화 파일을 읽는 중입니다…' : value ? '대화 파일을 불러왔습니다.' : ''}
+          {isReading ? '대화 파일을 읽고 크기를 확인하는 중입니다…' : value?.originalSize ? `5MB 이하의 업로드 파일을 준비했습니다. ${(value.originalSize / 1024 / 1024).toFixed(2)}MB → ${(value.file.size / 1024 / 1024).toFixed(2)}MB (${value.file.size.toLocaleString()}바이트). 원본 파일은 유지됩니다.` : value ? '대화 파일을 불러왔습니다.' : ''}
         </p>
         {value && <p className="uploaded-file"><img src="/design/file.svg" alt="" />{value.file.name} · {Math.ceil(value.file.size / 1024).toLocaleString()}KB<img src="/design/check.svg" alt="" /></p>}
         {(value || isReading) && <button className="button" type="button" disabled={disabled} onClick={removeFile}>파일 삭제</button>}

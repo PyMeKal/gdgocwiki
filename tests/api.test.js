@@ -208,3 +208,25 @@ test('upload action authenticates before upload and generation; invalid files se
   assert.ok((await submit()).error)
   assert.deepEqual(methods, [])
 })
+
+test('upload action sends the trimmed file even when given an oversized original', async () => {
+  const recent = '2026년 11월 28일 오후 1:00, 테스트 : 최신 대화\n'
+  const form = new FormData()
+  form.set('title', '용량 테스트')
+  form.set('chat', new File([
+    '2026년 11월 27일 오후 1:00, 테스트 : ', '가'.repeat(1_800_000), '\n', recent,
+  ], 'large.txt'))
+  let uploaded = false
+  mockAxios(async (url, options) => {
+    if (url.endsWith('/chats')) {
+      const file = options.data.get('file')
+      assert.ok(file.size <= 5 * 1024 * 1024)
+      assert.equal(await file.text(), recent)
+      uploaded = true
+    }
+    return Response.json(url.endsWith('/generations') ? { jobId: 'job' } : url.endsWith('/chats') ? { id: 'chat' } : { id: 'created' })
+  })
+  const result = await uploadAction({ request: new Request('http://localhost/', { method: 'POST', body: form }) }, client)
+  assert.equal(result.headers.get('Location'), '/wiki/created/generations/job')
+  assert.equal(uploaded, true)
+})

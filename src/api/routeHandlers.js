@@ -18,13 +18,13 @@ export async function uploadAction({ request }, client) {
     if (typeof password !== 'string') throw new Error('비밀번호를 문자열로 입력해주세요.')
     const file = form.get('chat')
     if (!(file instanceof File)) throw new Error('대화 파일을 선택해주세요.')
-    await readChatFile(file)
+    const preparedChat = await readChatFile(file)
     wiki ??= await createWiki({ name, password })
     if (password) {
       await unlockWiki(wiki.id, password)
       await refreshWiki(client, wiki.id)
     }
-    chat ??= await uploadChat(wiki.id, file)
+    chat ??= await uploadChat(wiki.id, preparedChat.file)
     const job = await generatePages(wiki.id, { chatIds: [chat.id], mode: 'MERGE' })
     await refreshWiki(client, wiki.id)
     client.setQueryData(['wiki', wiki.id, 'generations', job.jobId, 'upload'], { fileName: file.name })
