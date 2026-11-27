@@ -31,12 +31,19 @@ test('rejects other file types, empty content, binary content, and invalid text'
   await assert.rejects(readChatFile(new File([new Uint8Array([0xff])], 'chat.txt')), /텍스트를 읽을 수 없습니다/)
 })
 
+test('accepts files at the 5MB limit', async () => {
+  const file = new File(['a'.repeat(5 * 1024 * 1024)], 'chat.txt')
+  const result = await readChatFile(file)
+  assert.equal(result.file, file)
+  assert.equal(result.text.length, file.size)
+})
+
 test('rejects large files before reading and reports file read errors', async () => {
   await assert.rejects(readChatFile({
     name: 'large.txt',
-    size: 10 * 1024 * 1024 + 1,
+    size: 5 * 1024 * 1024 + 1,
     arrayBuffer: () => assert.fail('oversized file must not be read'),
-  }), /10MB/)
+  }), /5MB/)
 
   await assert.rejects(readChatFile({
     name: 'unreadable.txt',

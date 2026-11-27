@@ -2,8 +2,8 @@ export async function readChatFile(file) {
   if (!/\.txt$/i.test(file.name)) {
     throw new Error('카카오톡에서 내보낸 .txt 파일을 선택해주세요.')
   }
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error('10MB 이하의 파일을 선택해주세요.')
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('5MB 이하의 파일을 선택해주세요.')
   }
 
   let bytes

@@ -65,7 +65,7 @@ export default function ChatFileUpload({ value, onChange, disabled = false }) {
           aria-invalid={Boolean(error)}
           onChange={(event) => loadFiles(event.target.files)}
         />
-        <p id={`${inputId}-help`} className="file-help muted small">지원 형식: .txt · 최대 10MB · 한 번에 한 파일</p>
+        <p id={`${inputId}-help`} className="file-help muted small">지원 형식: .txt · 최대 5MB · 한 번에 한 파일</p>
         <p className="upload-status small" role="status">
           {isReading ? '대화 파일을 읽는 중입니다…' : value ? '대화 파일을 불러왔습니다.' : ''}
         </p>
