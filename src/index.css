@@ -268,7 +268,8 @@ input[type="password"] { width: 100%; }
 .wiki-home-page .section-heading h2 { font-size: 15px; }
 .wiki-home-page .section-heading .small { font-size: 10px; }
 .sort-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0 12px; }
-.sort-row select { font-size: 11px; border-radius: 8px; padding: 9px 12px; }
+.sort-row label { display: inline-flex; padding-right: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--color-white); }
+.sort-row select { font-size: 11px; border: 0; border-radius: 8px; padding: 9px 12px; }
 .sort-row > span { font-size: 10px; color: var(--muted); }
 .wiki-page-list { list-style: none; margin: 0; padding: 0; }
 .wiki-page-list li { border-bottom: 1px solid var(--border); }

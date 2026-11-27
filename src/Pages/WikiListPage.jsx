@@ -3,7 +3,6 @@ import { useRecentWikis } from '../api/queries.js'
 import WikiApiError from '../components/common/WikiApiError.jsx'
 import Skeleton from 'react-loading-skeleton'
 import { Link } from 'react-router'
-import ButtonLink from '../components/common/ButtonLink.jsx'
 import { wikiPath } from '../utils/paths.js'
 
 export default function WikiListPage() {
@@ -20,7 +19,7 @@ export default function WikiListPage() {
           <p>함께 나눈 대화, 다시 꺼내볼 수 있는 지식으로.</p>
           <div className="wiki-statistics"><div><strong>{loading ? <Skeleton width={30} /> : wikis.length}</strong><span>접근 가능한 위키</span></div></div>
         </section>
-        <div className="section-heading wiki-list-heading"><h2>대화로 연결된 지식</h2><ButtonLink to="/" primary>새 위키 만들기</ButtonLink></div>
+        <div className="section-heading wiki-list-heading"><h2>대화로 연결된 지식</h2></div>
         <p className="muted small wiki-list-description">이 브라우저에서 생성하거나 방문한 위키 중 지금 접근할 수 있는 위키를 모았어요.</p>
         <section className="wiki-list-results" aria-label="위키 목록" aria-busy={loading}>
           {entries.length ? (
