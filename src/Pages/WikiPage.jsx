@@ -26,8 +26,8 @@ export default function WikiPage() {
         <article className="wiki-article">
           <form className="article-search" action={wikiPath(wikiId)}>
             <label className="sr-only" htmlFor="article-search">위키 문서 검색</label>
-            <input id="article-search" name="q" type="search" placeholder={wikiResult.isPending ? 'Search this wiki' : `Search ${wiki.name}`} />
-            <button type="submit">Search</button>
+            <input id="article-search" name="q" type="search" placeholder={wikiResult.isPending ? '이 위키에서 검색' : `${wiki.name}에서 검색`} />
+            <button type="submit">검색</button>
           </form>
           <Breadcrumb><Link to={wikiPath(wikiId)}>{wikiResult.isPending ? <Skeleton width={80} /> : wiki.name}</Link> / 위키 문서</Breadcrumb>
           <WikiDocument key={`${wikiId}/${pagesId}`} loading={loading} updatedAt={page?.updatedAt} actions={<CopyWikiUrlButton key={wikiId} wikiId={wikiId} iconOnly />} wiki={document} wikiId={wikiId} pages={pageTitles.data} editPath={`${wikiPagePath(wikiId, pagesId)}/edit`} />

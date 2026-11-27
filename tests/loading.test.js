@@ -39,9 +39,9 @@ test('query data renders independently; navigation has no loaders and refetch ke
     const render = () => renderToStaticMarkup(createElement(QueryClientProvider, { client }, createElement(RouterProvider, { router })))
     const initial = render()
     assert.match(initial, /react-loading-skeleton/)
-    assert.match(initial, /Search this wiki/)
-    assert.match(initial, /Your conversation, organized/)
-    assert.match(initial, /Last modified/)
+    assert.match(initial, /이 위키에서 검색/)
+    assert.match(initial, /대화를 정리한 문서/)
+    assert.match(initial, /최근 수정순/)
     assert.equal((initial.match(/class="category-placeholder"/g) || []).length, 3)
     assert.match(initial, /class="wiki-home-results" aria-labelledby="pages-title" aria-busy="true"/)
     assert.doesNotMatch(initial, /불러오는 중입니다/)
@@ -56,8 +56,8 @@ test('query data renders independently; navigation has no loaders and refetch ke
 
     await router.navigate('/wiki/test/pages/article')
     const pending = render()
-    assert.match(pending, /Last edited:/)
-    assert.match(pending, />Search<\/button>/)
+    assert.match(pending, /최근 수정:/)
+    assert.match(pending, />검색<\/button>/)
     assert.match(pending, /전체 문서 편집/)
     assert.doesNotMatch(pending, /hidden=""/)
     assert.match(pending, /class="toc" aria-label="문서 목차" aria-busy="true"/)
@@ -69,7 +69,7 @@ test('query data renders independently; navigation has no loaders and refetch ke
     assert.equal((infoboxPlaceholder.match(/<tr>/g) || []).length, 4)
     const { default: WikiDocument } = await server.ssrLoadModule('/src/components/wiki/WikiDocument.jsx')
     const loadingDocument = renderToStaticMarkup(createElement(WikiDocument, { loading: true, updatedAt: page.updatedAt }))
-    assert.equal((loadingDocument.match(/Last edited:/g) || []).length, 1)
+    assert.equal((loadingDocument.match(/최근 수정:/g) || []).length, 1)
     await client.fetchQuery(pageQuery(wiki.id, page.id))
     assert.match(render(), /문서 내용/)
     assert.doesNotMatch(render(), /react-loading-skeleton/)
@@ -84,8 +84,8 @@ test('query data renders independently; navigation has no loaders and refetch ke
     await refetching
 
     for (const [path, fixedText] of [
-      ['/', 'Add your conversation'],
-      ['/wikis', 'Your conversations, connected'],
+      ['/', '대화 추가하기'],
+      ['/wikis', '대화로 연결된 지식'],
       ['/wiki/test/pages/article/edit', '전체 문서 편집'],
       ['/wiki/test/generations/job', '위키 제작'],
     ]) {
@@ -93,10 +93,10 @@ test('query data renders independently; navigation has no loaders and refetch ke
       const html = render()
       assert.ok(html.includes(fixedText), path)
       if (path === '/') {
-        assert.match(html, /Good chats\./)
+        assert.match(html, /함께 나눈 대화,/)
         assert.doesNotMatch(html.match(/<form[\s\S]*?<\/form>/)?.[0] ?? '', /react-loading-skeleton/)
       }
-      if (path.endsWith('/generations/job')) assert.match(html, /Conversation uploaded/)
+      if (path.endsWith('/generations/job')) assert.match(html, /대화 업로드 완료/)
     }
 
     const ids = ['first', 'second', 'last', 'locked', 'deleted']

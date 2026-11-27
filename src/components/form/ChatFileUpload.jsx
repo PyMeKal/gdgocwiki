@@ -40,7 +40,7 @@ export default function ChatFileUpload({ value, onChange, disabled = false }) {
 
   return (
     <div className="field chat-upload">
-      <label className="upload-label" htmlFor={inputId}>Upload file</label>
+      <label className="upload-label" htmlFor={inputId}>파일 업로드</label>
       <div
         className="upload-area"
         aria-busy={isReading}
@@ -52,7 +52,7 @@ export default function ChatFileUpload({ value, onChange, disabled = false }) {
           loadFiles(event.dataTransfer.files)
         }}
       >
-        <img className="upload-icon" src="/design/upload.svg" alt="" /><label className="choose-export" htmlFor={inputId}>Choose a chat export</label><p className="muted small">카카오톡 대화 파일을 선택하거나 끌어다 놓으세요.</p>
+        <img className="upload-icon" src="/design/upload.svg" alt="" /><label className="choose-export" htmlFor={inputId}>대화 파일 선택</label><p className="muted small">카카오톡 대화 파일을 선택하거나 끌어다 놓으세요.</p>
         <input
           className="sr-only"
           ref={inputRef}

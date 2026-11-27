@@ -28,9 +28,9 @@ export default function GenerationPage() {
     <main id="main" className="container generation-page">
       <title>위키 제작 · WikiTalk</title>
       <div className="generation-intro">
-        <p className="eyebrow">GOOD THINGS ARE COMING TOGETHER</p>
-        <h1>{failed ? '문서를 만들지 못했습니다.' : completed ? '다 제작되었습니다!' : <>Your chats.<br />A wiki in the making.</>}</h1>
-        <p className="intro">{failed ? '문서 생성에 실패했습니다. 홈으로 돌아가 다시 시작해주세요.' : completed ? 'Your conversation, connected and ready to explore.' : <>We’re analyzing the messages in your conversation<br />and turning them into something worth keeping.</>}</p>
+        <p className="eyebrow">대화 속 지식이 모이고 있어요</p>
+        <h1>{failed ? '문서를 만들지 못했습니다.' : completed ? '다 제작되었습니다!' : <>우리의 대화가<br />위키로 만들어지고 있어요.</>}</h1>
+        <p className="intro">{failed ? '문서 생성에 실패했습니다. 홈으로 돌아가 다시 시작해주세요.' : completed ? '함께 나눈 대화가 하나의 지식으로 연결되었어요.' : <>대화 속 메시지를 분석하고<br />오래 간직할 지식으로 정리하고 있어요.</>}</p>
       </div>
 
       <section className={`panel generation-progress${failed ? ' is-failed' : ''}${completed ? ' is-completed' : ''}`} aria-labelledby="generation-stage">
@@ -40,28 +40,28 @@ export default function GenerationPage() {
           {completed ? <img src="/design/generationCheck.svg" alt="" /> : failed ? <span>!</span> : null}
         </div>
         <div className="generation-stage" role="status" aria-busy={loading}>
-          <h2 id="generation-stage">{loading ? <Skeleton width={210} /> : failed ? '위키 제작이 중단되었습니다' : completed ? 'Your wiki is ready!' : processing ? 'Finding the good stuff…' : 'Getting things ready…'}</h2>
-          <p>{loading ? <Skeleton count={2} /> : failed ? '생성된 문서가 없습니다.' : completed ? `문서 ${job.createdPages + job.updatedPages}개를 저장했습니다.` : <>This may take a few moments.<br />Keep this page open while we work.</>}</p>
+          <h2 id="generation-stage">{loading ? <Skeleton width={210} /> : failed ? '위키 제작이 중단되었습니다' : completed ? '위키가 완성되었어요!' : processing ? '대화 속 중요한 내용을 찾고 있어요…' : '위키 제작을 준비하고 있어요…'}</h2>
+          <p>{loading ? <Skeleton count={2} /> : failed ? '생성된 문서가 없습니다.' : completed ? `문서 ${job.createdPages + job.updatedPages}개를 저장했습니다.` : <>잠시 시간이 걸릴 수 있어요.<br />완료될 때까지 이 페이지를 열어두세요.</>}</p>
           {pending && <span className="sr-only">위키를 만들고 있습니다.</span>}
         </div>
 
         {!failed && <><div className="generation-upload">
           <img src="/design/file.svg" alt="" />
-          <div><p>{upload?.fileName ?? 'Conversation uploaded'}</p><small>Upload complete</small></div>
+          <div><p>{upload?.fileName ?? '대화 업로드 완료'}</p><small>업로드 완료</small></div>
           <img src="/design/generationCheck.svg" alt="" />
         </div>
         <ol className="generation-steps" aria-label="위키 제작 단계">
           <li className="is-done">
             <span className="generation-step-icon"><img src="/design/generationCheck.svg" alt="완료" /></span>
-            <div><h3>Conversation uploaded</h3><p>Your chat is ready to go.</p></div>
+            <div><h3>대화 업로드 완료</h3><p>대화 분석 준비가 끝났어요.</p></div>
           </li>
           <li className={completed ? 'is-done' : processing ? 'is-current' : ''} aria-current={processing ? 'step' : undefined}>
             <span className="generation-step-icon">{completed ? <img src="/design/generationCheck.svg" alt="완료" /> : '02'}</span>
-            <div><h3>Connecting topics</h3><p>Finding ideas, people, and shared links.</p></div>
+            <div><h3>주제 연결하기</h3><p>아이디어와 인물, 공유된 링크를 찾고 있어요.</p></div>
           </li>
           <li className={completed ? 'is-done' : ''}>
             <span className="generation-step-icon">{completed ? <img src="/design/generationCheck.svg" alt="완료" /> : '03'}</span>
-            <div><h3>Building your wiki</h3><p>Organizing everything into articles.</p></div>
+            <div><h3>위키 만들기</h3><p>대화 속 내용을 문서로 정리해요.</p></div>
           </li>
         </ol></>}
         {(completed || failed) && <div className="actions">

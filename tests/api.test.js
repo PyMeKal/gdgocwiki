@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import process from 'node:process'
+import { build, createServer } from 'vite'
 import axios from 'axios'
 import { mockAxios } from './helpers/mockAxios.js'
 import * as api from '../src/api/wikis.js'
@@ -80,7 +85,11 @@ test('valid JSON response values are preserved regardless of content type', asyn
   }
 })
 
-test('requests log each outcome once without exposing payloads or server messages', async (t) => {
+test('development requests log each outcome once without exposing payloads or server messages', async (t) => {
+  const cacheDir = await mkdtemp(join(tmpdir(), 'gdgocwiki-api-vite-'))
+  const server = await createServer({ cacheDir, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom' })
+  t.after(async () => { await server.close(); await rm(cacheDir, { recursive: true, force: true }) })
+  const api = await server.ssrLoadModule('/src/api/wikis.js')
   const info = t.mock.method(console, 'info', () => {})
   const error = t.mock.method(console, 'error', () => {})
   respond({ chats: [] })
@@ -103,6 +112,29 @@ test('requests log each outcome once without exposing payloads or server message
     ['[API 실패] GET /wikis/test/chats (200)'],
     ['[API 실패] GET /wikis/test/chats (응답 없음)'],
   ])
+})
+
+test('production logging is silent for successful and failed API requests', async (t) => {
+  const originalNodeEnv = process.env.NODE_ENV
+  process.env.NODE_ENV = 'production'
+  t.after(() => {
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV
+    else process.env.NODE_ENV = originalNodeEnv
+  })
+  const [bundle] = await build({
+    configFile: false,
+    logLevel: 'silent',
+    build: { write: false, minify: false, lib: { entry: 'src/api/logApiResult.js', formats: ['es'] } },
+  })
+  const code = bundle.output.find((entry) => entry.type === 'chunk').code
+  const { logApiResult } = await import(`data:text/javascript,${encodeURIComponent(code)}`)
+  const info = t.mock.method(console, 'info', () => {})
+  const error = t.mock.method(console, 'error', () => {})
+  logApiResult({ method: 'GET', path: '/wikis/test', status: 200, success: true })
+  logApiResult({ method: 'GET', path: '/wikis/test', status: 500, success: false })
+  assert.equal(info.mock.callCount(), 0)
+  assert.equal(error.mock.callCount(), 0)
+  assert.doesNotMatch(code, /\[API|console\.(info|error)/)
 })
 
 test('generation polling only reads server-owned work and rejects invalid statuses', async () => {

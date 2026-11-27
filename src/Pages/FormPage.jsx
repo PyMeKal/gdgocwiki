@@ -24,22 +24,22 @@ export default function FormPage() {
 
   return (
     <>
-      <title>Import Chats · WikiTalk</title>
+      <title>대화 업로드 · WikiTalk</title>
       <meta name="description" content="카카오톡 대화 텍스트 파일을 첨부하는 화면" />
       <main id="main" className="container form-page import-page" aria-busy={loading}>
         <div className="import-intro">
-          <p className="eyebrow">A LITTLE LESS SCROLL. A LOT MORE KNOW.</p>
-          <h1>Good chats.<br />Great knowledge.</h1>
-          <p className="intro">Turn your chat history into a wiki worth keeping. Every insight, finally connected.</p>
+          <p className="eyebrow">스크롤은 줄이고, 지식은 더 많이.</p>
+          <h1>나눈 대화가,<br />쌓이는 지식으로.</h1>
+          <p className="intro">주고받은 대화를 이제 한곳에, <br/> 위키로 만들어보세요.</p>
         </div>
 
         <form className="panel" aria-labelledby="form-title" onSubmit={handleSubmit} aria-busy={busy}>
-          <h2 id="form-title"><span className="step-number">01</span> Add your conversation</h2>
+          <h2 id="form-title"><span className="step-number">01</span> 대화 추가하기</h2>
           <input type="hidden" name="wikiId" value={fetcher.data?.wiki?.id ?? ''} />
           <input type="hidden" name="chatId" value={fetcher.data?.chat?.id ?? ''} />
           <ChatFileUpload value={chat} onChange={setChat} disabled={busy || Boolean(fetcher.data?.chat)} />
           <div className="field">
-            <label htmlFor="wiki-title">Wiki name</label>
+            <label htmlFor="wiki-title">위키 이름</label>
             <input id="wiki-title" name="title" type="text" placeholder="예: 2026년 부산 여행" maxLength="100" required readOnly={busy || Boolean(fetcher.data?.wiki)} />
           </div>
           <details className="import-options"><summary>위키 비밀번호 (선택)</summary><div className="field">
@@ -51,13 +51,13 @@ export default function FormPage() {
 
           {fetcher.data?.error && <p className="upload-error" role="alert">{fetcher.data.error}</p>}
           <div className="actions">
-            <button className="button primary" type="submit" disabled={busy || !chat}>{fetcher.state !== 'idle' ? '업로드 중…' : 'Generate my wiki'}<img src="/design/generate.svg" alt="" /></button>
+            <button className="button primary" type="submit" disabled={busy || !chat}>{fetcher.state !== 'idle' ? '업로드 중…' : '내 위키 만들기'}<img src="/design/generate.svg" alt="" /></button>
           </div>
         </form>
 
         <p className="privacy-note"><img src="/design/lock.svg" alt="" />업로드 전 대화 참여자의 동의를 확인해주세요.</p>
         {(loading || wikis.length > 0) && <section className="recent-wiki">
-          <h2>Pick up where you left off</h2>
+          <h2>최근 방문한 위키</h2>
           {loading && wikis.length === 0 && <div className="recent-wiki-card"><Skeleton width={180} /></div>}
           {wikis.slice(0, 3).map((wiki) => <Link key={wiki.id} className="recent-wiki-card" to={wikiPath(wiki.id)}><span className="recent-wiki-icon"><img src="/design/recent.svg" alt="" /></span><span><strong>{wiki.name}</strong><small>대화로 만든 문서를 살펴보세요.</small></span><img src="/design/recentArrow.svg" alt="" /></Link>)}
         </section>}

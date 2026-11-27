@@ -62,9 +62,9 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
       } finally { router.dispose(); client.clear() }
     }
     const cases = [
-      ['/', 'Good chats.'], ['/form', '페이지를 찾을 수 없습니다'],
-      ['/wikis', 'Your conversations, connected'],
-      ['/wiki/team-42', 'Your conversation, organized'],
+      ['/', '함께 나눈 대화,'], ['/form', '페이지를 찾을 수 없습니다'],
+      ['/wikis', '대화로 연결된 지식'],
+      ['/wiki/team-42', '대화를 정리한 문서'],
       ['/wiki/team-42/import', '페이지를 찾을 수 없습니다'],
       ['/wiki/team-42/pages/page-17', '테스트 문서'],
       ['/wiki/team-42/pages/page-17/edit', '전체 문서 편집'],
@@ -80,6 +80,8 @@ test('routes render API data, navigation, errors and safe documents', async (t) 
       assert.equal((html.match(/class="bottom-navigation"/g) || []).length, 1)
       assert.equal((html.match(/<title>/g) || []).length, 1)
       assert.match(html, /href="\/wikis"/)
+      for (const label of ['위키 생성', '찾아보기', '내 위키', '설정']) assert.ok(html.includes(label))
+      assert.doesNotMatch(html, /Good chats|My wikis|PUBLIC WIKI|PRIVATE WIKI|Search this wiki|Last edited:|Generate my wiki/)
       for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) assert.ok(html.includes(`id="${target}"`))
       if (path.endsWith('?section=section-2')) {
         assert.match(html, /## 일정/)

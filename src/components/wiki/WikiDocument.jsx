@@ -35,10 +35,10 @@ export default function WikiDocument({ wiki, wikiId, pages, actions, editPath, u
     <>
       <header className="article-header">
         <div className="article-title-row"><h1>{loading ? <Skeleton width="60%" /> : wiki.title}</h1>{!editPath && actions}</div>
-        {loading ? <p className="article-modified">Last edited: <Skeleton width={90} inline /></p> :
-          typeof updatedAt === 'string' && Number.isFinite(Date.parse(updatedAt)) && <p className="article-modified"><time dateTime={updatedAt}>Last edited: {new Date(updatedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Seoul' }).replaceAll(' ', '').replace(/\.$/, '')}</time></p>}
+        {loading ? <p className="article-modified">최근 수정: <Skeleton width={90} inline /></p> :
+          typeof updatedAt === 'string' && Number.isFinite(Date.parse(updatedAt)) && <p className="article-modified"><time dateTime={updatedAt}>최근 수정: {new Date(updatedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Seoul' }).replaceAll(' ', '').replace(/\.$/, '')}</time></p>}
         {!loading && wiki?.description && <div className="muted small"><WikiContent blocks={description} /></div>}
-        {editPath && <div className="article-tools"><span>Article</span><Link to={editPath} aria-label="전체 문서 편집">편집</Link>{actions}</div>}
+        {editPath && <div className="article-tools"><span>문서</span><Link to={editPath} aria-label="전체 문서 편집">편집</Link>{actions}</div>}
         {(loading || wiki.category) && <p className="category">분류: {loading ? <Skeleton width={70} inline /> : wiki.category}</p>}
       </header>
       {warnings.length > 0 && <ul className="notice" aria-label="주석 확인 사항">{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}
